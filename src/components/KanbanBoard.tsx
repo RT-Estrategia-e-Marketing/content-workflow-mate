@@ -1,9 +1,14 @@
 import { Post, KANBAN_STAGES, TEAM_MEMBERS, KanbanStage } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
-import IPhoneMockup from './IPhoneMockup';
-import { ArrowRight, ArrowLeft, Link2, UserPlus } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Link2, UserPlus, Image, Film, Images } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+
+function TypeIcon({ type }: { type: string }) {
+  if (type === 'reels') return <Film className="w-3 h-3" />;
+  if (type === 'carousel') return <Images className="w-3 h-3" />;
+  return <Image className="w-3 h-3" />;
+}
 
 interface PostCardProps {
   post: Post;
@@ -31,6 +36,8 @@ function PostCard({ post }: PostCardProps) {
     toast.success('Link copiado!');
   };
 
+  const thumbnail = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : '');
+
   return (
     <div className="bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-2">
@@ -38,7 +45,21 @@ function PostCard({ post }: PostCardProps) {
         <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{post.scheduledDate}</span>
       </div>
 
-      <IPhoneMockup post={post} size="sm" />
+      {/* Thumbnail instead of mockup */}
+      {thumbnail ? (
+        <div className="aspect-square rounded-md overflow-hidden bg-muted mb-2">
+          <img src={thumbnail} alt={post.title} className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="aspect-square rounded-md bg-muted flex items-center justify-center mb-2">
+          <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
+            <TypeIcon type={post.type} />
+            <span className="text-[9px]">{post.type === 'image' ? 'Imagem' : post.type === 'reels' ? 'Reels' : 'Carrossel'}</span>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[9px] text-muted-foreground line-clamp-2 mb-2">{post.caption}</p>
 
       {canAssign && (
         <div className="mt-2">

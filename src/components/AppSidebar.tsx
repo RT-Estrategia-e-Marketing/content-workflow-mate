@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, Kanban, Settings } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clients', icon: Users, label: 'Clientes' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
+  { to: '/settings', icon: Settings, label: 'Configurações' },
 ];
 
 export default function AppSidebar() {
