@@ -1,14 +1,15 @@
 import { useApp } from '@/contexts/AppContext';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import PostPreviewDialog from '@/components/PostPreviewDialog';
 
 export default function CalendarPage() {
   const { posts, clients } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -22,6 +23,8 @@ export default function CalendarPage() {
       client: clients.find(c => c.id === p.clientId),
     }));
   }, [posts, clients]);
+
+  const selectedPost = selectedPostId ? posts.find(p => p.id === selectedPostId) : null;
 
   const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -64,9 +67,13 @@ export default function CalendarPage() {
                   {dayPosts.slice(0, 3).map(p => {
                     const stage = KANBAN_STAGES.find(s => s.key === p.stage);
                     return (
-                      <div key={p.id} className={`text-[9px] px-1.5 py-0.5 rounded ${stage?.color} ${stage?.borderColor} border truncate font-medium`}>
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPostId(p.id)}
+                        className={`w-full text-left text-[9px] px-1.5 py-0.5 rounded ${stage?.color} ${stage?.borderColor} border truncate font-medium hover:opacity-80 transition-opacity cursor-pointer`}
+                      >
                         {p.client?.logo} {p.title}
-                      </div>
+                      </button>
                     );
                   })}
                   {dayPosts.length > 3 && (
@@ -78,6 +85,10 @@ export default function CalendarPage() {
           })}
         </div>
       </div>
+
+      {selectedPost && (
+        <PostPreviewDialog post={selectedPost} open={!!selectedPostId} onOpenChange={(v) => { if (!v) setSelectedPostId(null); }} />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import IPhoneMockup from '@/components/IPhoneMockup';
-import { CheckCircle, MessageSquare } from 'lucide-react';
+import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook } from 'lucide-react';
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -80,9 +80,32 @@ export default function ApprovalPage() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-          <h2 className="font-display font-bold text-lg text-card-foreground mb-4">{post.title}</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-display font-bold text-lg text-card-foreground">{post.title}</h2>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              {post.type === 'reels' && <><Film className="w-3 h-3" /> Reels</>}
+              {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel</>}
+              {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
+            </span>
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+              {(post.platform === 'instagram' || post.platform === 'both') && <Instagram className="w-3 h-3" />}
+              {(post.platform === 'facebook' || post.platform === 'both') && <Facebook className="w-3 h-3" />}
+            </span>
+          </div>
           
           <IPhoneMockup post={post} size="md" />
+
+          {post.type === 'carousel' && post.images && post.images.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto mt-4 pb-2">
+              {post.images.map((img, i) => (
+                img && <img key={i} src={img} alt={`Slide ${i + 1}`} className="w-24 h-24 rounded-lg object-cover flex-shrink-0 border border-border" />
+              ))}
+            </div>
+          )}
+
+          {post.type === 'reels' && post.videoUrl && (
+            <video src={post.videoUrl} controls className="w-full rounded-lg mt-4 max-h-64" />
+          )}
 
           <div className="mt-4 p-3 bg-secondary rounded-lg">
             <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>

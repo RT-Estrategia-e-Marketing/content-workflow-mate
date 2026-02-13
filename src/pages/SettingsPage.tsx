@@ -1,46 +1,30 @@
 import { useTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfiles } from '@/hooks/useProfiles';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sun, Moon, UserPlus, LogOut } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  priority: string;
-  created_at: string;
-}
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
-  const [members, setMembers] = useState<Profile[]>([]);
+  const { profiles, refetch } = useProfiles();
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
   const [newPriority, setNewPriority] = useState('member');
+  const [newJobTitle, setNewJobTitle] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
-  const fetchMembers = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('created_at');
-    if (data) setMembers(data as Profile[]);
-  };
 
   const handleAddMember = async () => {
     if (!newEmail.trim() || !newPassword.trim() || !newName.trim()) return;
     setLoading(true);
 
-    // Create user via admin-like signup
     const { error } = await supabase.auth.signUp({
       email: newEmail.trim(),
       password: newPassword,
@@ -54,20 +38,22 @@ export default function SettingsPage() {
       toast.error(error.message);
     } else {
       toast.success(`Convite enviado para ${newEmail}`);
-      setNewEmail('');
-      setNewPassword('');
-      setNewName('');
-      setNewPriority('member');
-      // Refresh members after a small delay for profile trigger
-      setTimeout(fetchMembers, 1000);
+      setNewEmail(''); setNewPassword(''); setNewName(''); setNewPriority('member'); setNewJobTitle('');
+      setTimeout(refetch, 1000);
     }
     setLoading(false);
   };
 
   const handleUpdatePriority = async (profileId: string, priority: string) => {
     await supabase.from('profiles').update({ priority }).eq('id', profileId);
-    fetchMembers();
+    refetch();
     toast.success('Prioridade atualizada');
+  };
+
+  const handleUpdateJobTitle = async (profileId: string, job_title: string) => {
+    await supabase.from('profiles').update({ job_title } as any).eq('id', profileId);
+    refetch();
+    toast.success('Função atualizada');
   };
 
   return (
@@ -106,22 +92,32 @@ export default function SettingsPage() {
         <h2 className="font-display font-bold text-lg text-card-foreground mb-4">Equipe</h2>
 
         <div className="space-y-3 mb-6">
-          {members.map(m => (
-            <div key={m.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-foreground">{m.full_name}</p>
-                <p className="text-xs text-muted-foreground">{m.user_id === user?.id ? '(Você)' : ''}</p>
+          {profiles.map(m => (
+            <div key={m.id} className="p-3 bg-secondary rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{m.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{m.user_id === user?.id ? '(Você)' : ''} {m.job_title && `· ${m.job_title}`}</p>
+                </div>
+                <Select value={m.priority} onValueChange={(v) => handleUpdatePriority(m.id, v)}>
+                  <SelectTrigger className="w-32 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Gerente</SelectItem>
+                    <SelectItem value="member">Membro</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={m.priority} onValueChange={(v) => handleUpdatePriority(m.id, v)}>
-                <SelectTrigger className="w-32 h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Gerente</SelectItem>
-                  <SelectItem value="member">Membro</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                placeholder="Função (ex: Designer, Redator...)"
+                defaultValue={m.job_title}
+                onBlur={(e) => {
+                  if (e.target.value !== m.job_title) handleUpdateJobTitle(m.id, e.target.value);
+                }}
+                className="h-8 text-xs"
+              />
             </div>
           ))}
         </div>
@@ -132,6 +128,7 @@ export default function SettingsPage() {
           </h3>
           <div className="space-y-3">
             <Input placeholder="Nome completo" value={newName} onChange={e => setNewName(e.target.value)} maxLength={100} />
+            <Input placeholder="Função (ex: Designer, Redator)" value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} maxLength={100} />
             <Input type="email" placeholder="E-mail" value={newEmail} onChange={e => setNewEmail(e.target.value)} maxLength={255} />
             <Input type="password" placeholder="Senha (mín. 6 caracteres)" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={6} />
             <Select value={newPriority} onValueChange={setNewPriority}>
