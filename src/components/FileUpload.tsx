@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,12 +16,14 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(preview || '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const isVideo = accept.includes('video');
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Arquivo muito grande (máx. 10MB)');
+    const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`Arquivo muito grande (máx. ${isVideo ? '100MB' : '10MB'})`);
       return;
     }
 
@@ -53,7 +55,11 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
       <input ref={inputRef} type="file" accept={accept} onChange={handleUpload} className="hidden" />
       {previewUrl ? (
         <div className="relative group">
-          <img src={previewUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg border border-border" />
+          {isVideo ? (
+            <video src={previewUrl} className="w-full h-32 object-cover rounded-lg border border-border" controls />
+          ) : (
+            <img src={previewUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg border border-border" />
+          )}
           <button
             onClick={handleClear}
             className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

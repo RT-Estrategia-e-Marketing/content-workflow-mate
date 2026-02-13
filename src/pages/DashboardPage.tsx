@@ -42,7 +42,11 @@ export default function DashboardPage() {
               className="bg-card rounded-xl p-5 border border-border shadow-sm text-left hover:shadow-md hover:border-primary/30 transition-all group"
             >
               <div className="flex items-center gap-3 mb-3">
-                <span className="text-2xl">{client.logo}</span>
+                {client.logo.startsWith('http') ? (
+                  <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-lg object-cover" />
+                ) : (
+                  <span className="text-2xl">{client.logo}</span>
+                )}
                 <div>
                   <h3 className="font-display font-bold text-card-foreground group-hover:text-primary transition-colors">{client.name}</h3>
                   <p className="text-xs text-muted-foreground">{clientPosts.length} posts</p>

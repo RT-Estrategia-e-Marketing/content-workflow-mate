@@ -11,6 +11,10 @@ export function useAppData() {
     return newClient;
   }, []);
 
+  const updateClient = useCallback((clientId: string, data: Partial<Omit<Client, 'id'>>) => {
+    setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...data } : c));
+  }, []);
+
   const addPost = useCallback((post: Omit<Post, 'id' | 'createdAt' | 'comments' | 'approvalLink'>) => {
     const newPost: Post = {
       ...post,
@@ -20,6 +24,10 @@ export function useAppData() {
     };
     setPosts(prev => [...prev, newPost]);
     return newPost;
+  }, []);
+
+  const updatePost = useCallback((postId: string, data: Partial<Omit<Post, 'id'>>) => {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
   }, []);
 
   const movePost = useCallback((postId: string, newStage: KanbanStage) => {
@@ -41,5 +49,5 @@ export function useAppData() {
     return posts.filter(p => p.clientId === clientId);
   }, [posts]);
 
-  return { clients, posts, addClient, addPost, movePost, assignPost, getClientPosts };
+  return { clients, posts, addClient, updateClient, addPost, updatePost, movePost, assignPost, getClientPosts };
 }

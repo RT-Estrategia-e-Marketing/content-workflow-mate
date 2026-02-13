@@ -1,8 +1,9 @@
-import { Post, KANBAN_STAGES, TEAM_MEMBERS, KanbanStage } from '@/lib/types';
+import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
-import { ArrowRight, ArrowLeft, Link2, UserPlus, Image, Film, Images } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { useProfiles } from '@/hooks/useProfiles';
+import { Image, Film, Images, Instagram, Facebook } from 'lucide-react';
+import { useState } from 'react';
+import PostPreviewDialog from '@/components/PostPreviewDialog';
 
 function TypeIcon({ type }: { type: string }) {
   if (type === 'reels') return <Film className="w-3 h-3" />;
@@ -10,100 +11,72 @@ function TypeIcon({ type }: { type: string }) {
   return <Image className="w-3 h-3" />;
 }
 
+function TypeLabel({ type }: { type: PostType }) {
+  if (type === 'reels') return 'Reels';
+  if (type === 'carousel') return 'Carrossel';
+  return 'Imagem';
+}
+
+function PlatformBadge({ platform }: { platform: Platform }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground">
+      {(platform === 'instagram' || platform === 'both') && <Instagram className="w-2.5 h-2.5" />}
+      {(platform === 'facebook' || platform === 'both') && <Facebook className="w-2.5 h-2.5" />}
+    </span>
+  );
+}
+
 interface PostCardProps {
   post: Post;
 }
 
 function PostCard({ post }: PostCardProps) {
-  const { movePost, assignPost } = useApp();
-  const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
-  const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
-  const canMoveBack = stageIndex > 0;
-  const canAssign = ['content', 'internal_approval', 'adjustments'].includes(post.stage);
-  const assigned = TEAM_MEMBERS.find(m => m.id === post.assignedTo);
-
-  const handleMoveForward = () => {
-    const nextStage = KANBAN_STAGES[stageIndex + 1].key;
-    movePost(post.id, nextStage);
-    if (nextStage === 'client_approval') {
-      toast.success('Link de aprovação gerado!');
-    }
-  };
-
-  const handleCopyLink = () => {
-    const link = `${window.location.origin}/approve/${post.approvalLink}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Link copiado!');
-  };
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { profiles } = useProfiles();
+  const assigned = profiles.find(m => m.user_id === post.assignedTo);
 
   const thumbnail = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : '');
 
   return (
-    <div className="bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="text-xs font-semibold text-card-foreground truncate flex-1">{post.title}</h4>
-        <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{post.scheduledDate}</span>
-      </div>
-
-      {/* Thumbnail instead of mockup */}
-      {thumbnail ? (
-        <div className="aspect-square rounded-md overflow-hidden bg-muted mb-2">
-          <img src={thumbnail} alt={post.title} className="w-full h-full object-cover" />
+    <>
+      <button
+        onClick={() => setPreviewOpen(true)}
+        className="w-full text-left bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md hover:border-primary/30 transition-all"
+      >
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="text-xs font-semibold text-card-foreground truncate flex-1">{post.title}</h4>
+          <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{post.scheduledDate}</span>
         </div>
-      ) : (
-        <div className="aspect-square rounded-md bg-muted flex items-center justify-center mb-2">
-          <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
-            <TypeIcon type={post.type} />
-            <span className="text-[9px]">{post.type === 'image' ? 'Imagem' : post.type === 'reels' ? 'Reels' : 'Carrossel'}</span>
+
+        {thumbnail ? (
+          <div className="aspect-square rounded-md overflow-hidden bg-muted mb-2">
+            <img src={thumbnail} alt={post.title} className="w-full h-full object-cover" />
           </div>
-        </div>
-      )}
-
-      <p className="text-[9px] text-muted-foreground line-clamp-2 mb-2">{post.caption}</p>
-
-      {canAssign && (
-        <div className="mt-2">
-          <Select value={post.assignedTo || ''} onValueChange={(val) => assignPost(post.id, val)}>
-            <SelectTrigger className="h-7 text-[10px]">
-              <div className="flex items-center gap-1">
-                <UserPlus className="w-3 h-3" />
-                <SelectValue placeholder="Delegar" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {TEAM_MEMBERS.map(m => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">
-                  {m.name} · {m.role}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {assigned && !canAssign && (
-        <p className="text-[10px] text-muted-foreground mt-2">👤 {assigned.name}</p>
-      )}
-
-      {post.stage === 'client_approval' && post.approvalLink && (
-        <button onClick={handleCopyLink} className="mt-2 flex items-center gap-1 text-[10px] text-primary hover:underline w-full">
-          <Link2 className="w-3 h-3" /> Copiar link de aprovação
-        </button>
-      )}
-
-      <div className="flex gap-1 mt-3">
-        {canMoveBack && (
-          <button onClick={() => movePost(post.id, KANBAN_STAGES[stageIndex - 1].key)} className="flex-1 flex items-center justify-center gap-1 text-[10px] py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-            <ArrowLeft className="w-3 h-3" />
-          </button>
+        ) : (
+          <div className="aspect-square rounded-md bg-muted flex items-center justify-center mb-2">
+            <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
+              <TypeIcon type={post.type} />
+              <span className="text-[9px]">{TypeLabel({ type: post.type })}</span>
+            </div>
+          </div>
         )}
-        {canMoveForward && (
-          <button onClick={handleMoveForward} className="flex-1 flex items-center justify-center gap-1 text-[10px] py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-            Avançar <ArrowRight className="w-3 h-3" />
-          </button>
+
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-foreground/5 text-muted-foreground">
+            <TypeIcon type={post.type} /> {TypeLabel({ type: post.type })}
+          </span>
+          <PlatformBadge platform={post.platform} />
+        </div>
+
+        <p className="text-[9px] text-muted-foreground line-clamp-2 mb-1">{post.caption}</p>
+
+        {assigned && (
+          <p className="text-[10px] text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>
         )}
-      </div>
-    </div>
+      </button>
+
+      <PostPreviewDialog post={post} open={previewOpen} onOpenChange={setPreviewOpen} />
+    </>
   );
 }
 
