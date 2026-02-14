@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          client_id: string
+          created_at: string
+          from_user_id: string | null
+          id: string
+          message: string
+          post_id: string
+          read: boolean
+          type: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          message: string
+          post_id: string
+          read?: boolean
+          type?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          message?: string
+          post_id?: string
+          read?: boolean
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

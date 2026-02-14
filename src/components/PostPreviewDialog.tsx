@@ -1,14 +1,15 @@
-import { Post, KANBAN_STAGES, PostType, Platform } from '@/lib/types';
+import { Post, KANBAN_STAGES, PostType, Platform, PostComment } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FileUpload from '@/components/FileUpload';
-import IPhoneMockup from '@/components/IPhoneMockup';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,7 +21,9 @@ interface PostPreviewDialogProps {
 
 export default function PostPreviewDialog({ post, open, onOpenChange }: PostPreviewDialogProps) {
   const { movePost, assignPost, updatePost } = useApp();
+  const { user } = useAuth();
   const { profiles } = useProfiles();
+  const { createNotification } = useNotifications();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(post.title);
   const [caption, setCaption] = useState(post.caption);
@@ -30,6 +33,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [mainImage, setMainImage] = useState(post.imageUrl);
   const [videoUrl, setVideoUrl] = useState(post.videoUrl || '');
   const [carouselImages, setCarouselImages] = useState<string[]>(post.images || []);
+
+  // Internal approval comment
+  const [commentText, setCommentText] = useState('');
+  const [delegateTo, setDelegateTo] = useState('');
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
@@ -57,6 +64,36 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     toast.success('Link copiado!');
   };
 
+  const handleAddComment = () => {
+    if (!commentText.trim()) return;
+    const myProfile = profiles.find(p => p.user_id === user?.id);
+    const newComment: PostComment = {
+      id: `cm${Date.now()}`,
+      author: myProfile?.full_name || 'Usuário',
+      authorId: user?.id,
+      text: commentText.trim(),
+      createdAt: new Date().toISOString(),
+      delegatedTo: delegateTo || undefined,
+    };
+    updatePost(post.id, { comments: [...post.comments, newComment] });
+
+    // Send notification if delegated
+    if (delegateTo) {
+      const delegatedProfile = profiles.find(p => p.user_id === delegateTo);
+      createNotification({
+        user_id: delegateTo,
+        post_id: post.id,
+        client_id: post.clientId,
+        type: 'change_request',
+        message: `${myProfile?.full_name || 'Alguém'} solicitou alteração no post "${post.title}": ${commentText.trim()}`,
+      });
+      toast.success(`Alteração delegada para ${delegatedProfile?.full_name}`);
+    }
+
+    setCommentText('');
+    setDelegateTo('');
+  };
+
   const handleSave = () => {
     let imageUrl = mainImage;
     let images: string[] | undefined = undefined;
@@ -65,7 +102,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       imageUrl = carouselImages[0] || '';
       images = carouselImages;
     } else if (type === 'reels') {
-      imageUrl = mainImage; // cover
+      imageUrl = mainImage;
     }
 
     updatePost(post.id, {
@@ -232,6 +269,56 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               <button onClick={handleCopyLink} className="flex items-center gap-1 text-xs text-primary hover:underline">
                 <Link2 className="w-3 h-3" /> Copiar link de aprovação
               </button>
+            )}
+
+            {/* Comments / Change Requests */}
+            {post.comments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" /> Solicitações de alteração
+                </p>
+                {post.comments.map(c => {
+                  const delegated = c.delegatedTo ? profiles.find(p => p.user_id === c.delegatedTo) : null;
+                  return (
+                    <div key={c.id} className="p-2 bg-muted rounded-lg text-xs">
+                      <p className="font-medium text-foreground">{c.author}</p>
+                      <p className="text-muted-foreground mt-0.5">{c.text}</p>
+                      {delegated && (
+                        <p className="text-[10px] text-primary mt-1">→ Delegado para {delegated.full_name}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add comment for internal approval */}
+            {(post.stage === 'internal_approval' || post.stage === 'adjustments') && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-xs font-semibold text-foreground">Solicitar alteração</p>
+                <Textarea
+                  placeholder="Descreva a alteração necessária..."
+                  value={commentText}
+                  onChange={e => setCommentText(e.target.value)}
+                  rows={2}
+                  className="text-xs"
+                />
+                <Select value={delegateTo} onValueChange={setDelegateTo}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Delegar para..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(m => (
+                      <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
+                        {m.full_name} · {m.job_title || m.priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={handleAddComment} disabled={!commentText.trim()} className="w-full">
+                  <Send className="w-3 h-3 mr-1" /> Enviar
+                </Button>
+              </div>
             )}
 
             {/* Stage controls */}
