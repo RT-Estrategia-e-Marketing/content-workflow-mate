@@ -5,8 +5,10 @@ export type KanbanStage = 'content' | 'internal_approval' | 'adjustments' | 'cli
 export interface PostComment {
   id: string;
   author: string;
+  authorId?: string;
   text: string;
   createdAt: string;
+  delegatedTo?: string;
 }
 
 export interface Post {
