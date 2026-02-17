@@ -2,8 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import KanbanBoard from '@/components/KanbanBoard';
-import { ArrowLeft, Plus, X, Edit2 } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical } from 'lucide-react';
+import { useState, useRef, DragEvent } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PostType, Platform } from '@/lib/types';
 import FileUpload from '@/components/FileUpload';
+import DatePicker from '@/components/DatePicker';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -30,6 +33,8 @@ export default function ClientDetailPage() {
   const [reelsCover, setReelsCover] = useState('');
   const [reelsVideo, setReelsVideo] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const multiFileRef = useRef<HTMLInputElement>(null);
 
   // Edit client state
   const [editName, setEditName] = useState('');
@@ -57,6 +62,39 @@ export default function ClientDetailPage() {
       logo: editUsePhoto && editLogo ? editLogo : editEmoji,
     });
     setEditOpen(false);
+  };
+
+  // Carousel reorder
+  const handleCarouselDragStart = (e: DragEvent, idx: number) => {
+    setDragIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCarouselDrop = (e: DragEvent, targetIdx: number) => {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === targetIdx) return;
+    const newImages = [...carouselImages];
+    const [moved] = newImages.splice(dragIdx, 1);
+    newImages.splice(targetIdx, 0, moved);
+    setCarouselImages(newImages);
+    setDragIdx(null);
+  };
+
+  const handleMultiFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const uploads: string[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} muito grande`); continue; }
+      const ext = file.name.split('.').pop();
+      const path = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+      const { error } = await supabase.storage.from('post-media').upload(path, file);
+      if (error) { toast.error(`Erro: ${file.name}`); continue; }
+      const { data: { publicUrl } } = supabase.storage.from('post-media').getPublicUrl(path);
+      uploads.push(publicUrl);
+    }
+    setCarouselImages(prev => [...prev, ...uploads]);
+    if (uploads.length > 0) toast.success(`${uploads.length} imagem(ns) adicionada(s)`);
   };
 
   const handleAdd = () => {
@@ -158,23 +196,41 @@ export default function ClientDetailPage() {
                 {type === 'carousel' && (
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground font-medium">Imagens do Carrossel</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
+                    <div className="grid grid-cols-3 gap-2">
                       {carouselImages.map((img, i) => (
-                        <div key={i} className="relative">
-                          <FileUpload bucket="post-media" onUpload={(url) => setCarouselImages(prev => prev.map((im, idx) => idx === i ? url : im))} label={`Slide ${i + 1}`} preview={img} />
-                          <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[10px] z-10">
-                            <X className="w-3 h-3" />
-                          </button>
+                        <div
+                          key={i}
+                          draggable
+                          onDragStart={(e) => handleCarouselDragStart(e, i)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleCarouselDrop(e, i)}
+                          className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}
+                        >
+                          {img ? (
+                            <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" />
+                          ) : (
+                            <div className="w-full aspect-square bg-muted flex items-center justify-center">
+                              <Upload className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
+                            <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
+                            <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
                         </div>
                       ))}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setCarouselImages(prev => [...prev, ''])} className="w-full text-xs">
-                      + Adicionar Slide
+                    <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
+                      <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
                     </Button>
                   </div>
                 )}
 
-                <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+                <DatePicker value={date} onChange={setDate} />
 
                 <div>
                   <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>

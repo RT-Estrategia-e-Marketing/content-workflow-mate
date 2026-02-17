@@ -4,6 +4,7 @@ import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook, C
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { formatDateBR } from '@/lib/utils';
 
 function InstagramMockup({ post }: { post: any }) {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -77,6 +78,9 @@ function InstagramMockup({ post }: { post: any }) {
           {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel ({allImages.length} slides)</>}
           {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
         </span>
+        {post.scheduledDate && (
+          <span className="text-[10px] text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</span>
+        )}
       </div>
 
       {/* Caption */}
@@ -139,12 +143,6 @@ export default function ApprovalPage() {
 
   const handleRequestAdjustment = () => {
     if (!feedback.trim()) return;
-    const newComment = {
-      id: `cm${Date.now()}`,
-      author: 'Cliente',
-      text: feedback.trim(),
-      createdAt: new Date().toISOString(),
-    };
     movePost(post.id, 'adjustments');
     setStatus('adjustment');
   };

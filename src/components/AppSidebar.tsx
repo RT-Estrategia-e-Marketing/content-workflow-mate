@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import FileUpload from '@/components/FileUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,7 +23,7 @@ export default function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { profiles, refetch } = useProfiles();
-  const { unreadCount } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -68,6 +69,8 @@ export default function AppSidebar() {
   const initials = (myProfile?.full_name || user?.email || '?')
     .split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
+  const recentNotifications = notifications.slice(0, 5);
+
   return (
     <>
       <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30">
@@ -76,6 +79,59 @@ export default function AppSidebar() {
             <Kanban className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="font-display text-xl font-bold text-sidebar-primary-foreground">PostFlow</span>
+          
+          {/* Notification Bell */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="ml-auto relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
+                <Bell className="w-4 h-4 text-sidebar-foreground" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="start" side="bottom">
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-display font-bold text-foreground">Notificações</h3>
+                {unreadCount > 0 && (
+                  <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Marcar todas
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[300px] overflow-y-auto">
+                {recentNotifications.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
+                ) : (
+                  recentNotifications.map(n => {
+                    const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => markAsRead(n.id)}
+                        className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
+                          n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                          <div className="min-w-0">
+                            <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {new Date(n.created_at).toLocaleDateString('pt-BR')}
+                              {fromProfile && ` · ${fromProfile.full_name}`}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <nav className="flex-1 px-3 mt-4 space-y-1">
@@ -94,27 +150,22 @@ export default function AppSidebar() {
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
-                {item.to === '/' && unreadCount > 0 && (
-                  <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
               </NavLink>
             );
           })}
         </nav>
 
         {/* User Profile Section */}
-        <div className="p-3 mx-3 mb-4">
+        <div className="px-3 mb-4">
           <div className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-sidebar-accent transition-colors"
             >
               {myProfile?.avatar_url ? (
-                <img src={myProfile.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                <img src={myProfile.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-sidebar-border" />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-sidebar-border">
                   {initials}
                 </div>
               )}
@@ -126,13 +177,36 @@ export default function AppSidebar() {
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
-                <button onClick={openProfile} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-popover-foreground hover:bg-secondary transition-colors">
-                  <Camera className="w-4 h-4" /> Editar Perfil
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-slide-in">
+                <div className="p-3 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    {myProfile?.avatar_url ? (
+                      <img src={myProfile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                        {initials}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-popover-foreground truncate">{myProfile?.full_name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={openProfile}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+                >
+                  <Camera className="w-4 h-4 text-muted-foreground" /> Editar Perfil
                 </button>
-                <button onClick={() => { setMenuOpen(false); signOut(); }} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-destructive hover:bg-secondary transition-colors">
-                  <LogOut className="w-4 h-4" /> Sair
-                </button>
+                <div className="border-t border-border">
+                  <button
+                    onClick={() => { setMenuOpen(false); signOut(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-secondary transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" /> Sair
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -149,21 +223,33 @@ export default function AppSidebar() {
             <div className="flex justify-center">
               <div className="relative">
                 {editAvatar ? (
-                  <img src={editAvatar} alt="" className="w-20 h-20 rounded-full object-cover" />
+                  <img src={editAvatar} alt="" className="w-20 h-20 rounded-full object-cover ring-4 ring-border" />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
+                  <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary ring-4 ring-border">
                     {initials}
                   </div>
                 )}
               </div>
             </div>
             <FileUpload bucket="client-logos" onUpload={setEditAvatar} label="Alterar foto" preview={editAvatar} />
-            <Input placeholder="Nome completo" value={editName} onChange={e => setEditName(e.target.value)} />
-            <Input placeholder="E-mail" value={user?.email || ''} disabled className="opacity-60" />
-            <Input placeholder="Função (ex: Designer, Redator)" value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} />
-            <Input type="password" placeholder="Nova senha (mín. 6 caracteres)" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">Nome</label>
+              <Input placeholder="Nome completo" value={editName} onChange={e => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">E-mail</label>
+              <Input placeholder="E-mail" value={user?.email || ''} disabled className="opacity-60" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">Função</label>
+              <Input placeholder="Função (ex: Designer, Redator)" value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">Nova senha</label>
+              <Input type="password" placeholder="Nova senha (mín. 6 caracteres)" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            </div>
             <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
         </DialogContent>
