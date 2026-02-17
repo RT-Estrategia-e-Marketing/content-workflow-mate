@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Kanban } from 'lucide-react';
+import { Kanban, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signOut, user } = useAuth();
+  const { isApproved, loading: roleLoading } = useUserRole();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signedUp, setSignedUp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +26,7 @@ export default function LoginPage() {
         toast.error(error.message);
       } else {
         toast.success('Conta criada! Verifique seu e-mail para confirmar.');
+        setSignedUp(true);
       }
     } else {
       const { error } = await signIn(email, password);
@@ -32,6 +36,56 @@ export default function LoginPage() {
     }
     setLoading(false);
   };
+
+  // Show pending approval screen if user is logged in but not approved
+  if (user && !roleLoading && !isApproved) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm animate-slide-in text-center">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <Kanban className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <span className="font-display text-2xl font-bold text-foreground">PostFlow</span>
+          </div>
+          <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+            <Clock className="w-12 h-12 text-warning mx-auto mb-4" />
+            <h2 className="font-display font-bold text-lg text-card-foreground mb-2">Aguardando Aprovação</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Sua conta foi criada com sucesso. Um administrador precisa aprovar seu acesso antes que você possa usar o sistema.
+            </p>
+            <Button variant="outline" onClick={signOut} className="w-full">
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (signedUp) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm animate-slide-in text-center">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <Kanban className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <span className="font-display text-2xl font-bold text-foreground">PostFlow</span>
+          </div>
+          <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+            <h2 className="font-display font-bold text-lg text-card-foreground mb-2">Verifique seu e-mail</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enviamos um link de confirmação para <strong>{email}</strong>. Após confirmar, um administrador precisará aprovar seu acesso.
+            </p>
+            <Button variant="outline" onClick={() => setSignedUp(false)} className="w-full">
+              Voltar ao login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

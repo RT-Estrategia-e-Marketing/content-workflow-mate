@@ -1,6 +1,7 @@
 import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
+import { formatDateBR } from '@/lib/utils';
 import { Image, Film, Images, Instagram, Facebook } from 'lucide-react';
 import { useState, DragEvent } from 'react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -51,7 +52,7 @@ function PostCard({ post }: PostCardProps) {
       >
         <div className="flex items-start justify-between mb-2">
           <h4 className="text-xs font-semibold text-card-foreground truncate flex-1">{post.title}</h4>
-          <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{post.scheduledDate}</span>
+          <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{formatDateBR(post.scheduledDate)}</span>
         </div>
 
         {thumbnail ? (

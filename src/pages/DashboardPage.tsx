@@ -4,6 +4,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
 import { Users, FileText, CheckCircle, Clock, Bell, Check } from 'lucide-react';
+import { formatDateBR } from '@/lib/utils';
 import { useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -113,7 +114,7 @@ export default function DashboardPage() {
                   <div className={`w-2 h-2 rounded-full ${taskTab === 'overdue' ? 'bg-destructive' : stage?.borderColor?.replace('border-', 'bg-') || 'bg-muted'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{client?.name} · {p.scheduledDate}</p>
+                    <p className="text-[10px] text-muted-foreground">{client?.name} · {formatDateBR(p.scheduledDate)}</p>
                   </div>
                   <span className={`text-[9px] px-2 py-0.5 rounded-full ${stage?.color} ${stage?.borderColor} border`}>{stage?.label}</span>
                 </button>
