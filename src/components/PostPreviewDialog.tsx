@@ -11,10 +11,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+function PreviewCarousel({ images }: { images: string[] }) {
+  const [idx, setIdx] = useState(0);
+  return (
+    <div className="relative rounded-lg border border-border overflow-hidden bg-muted">
+      <img src={images[idx]} alt={`Slide ${idx + 1}`} className="w-full object-contain" />
+      {images.length > 1 && (
+        <>
+          {idx > 0 && (
+            <button onClick={() => setIdx(i => i - 1)} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/80 flex items-center justify-center">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
+          {idx < images.length - 1 && (
+            <button onClick={() => setIdx(i => i + 1)} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-background/80 flex items-center justify-center">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {images.map((_, i) => (
+              <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === idx ? 'bg-primary' : 'bg-foreground/30'}`} />
+            ))}
+          </div>
+          <span className="absolute top-2 right-2 text-[10px] bg-foreground/60 text-background rounded px-1.5 py-0.5">{idx + 1}/{images.length}</span>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface PostPreviewDialogProps {
   post: Post;
@@ -131,7 +160,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     let imageUrl = mainImage;
     let images: string[] | undefined = undefined;
 
-    if (type === 'carousel') {
+    if (type === 'carousel' || type === 'story') {
       imageUrl = carouselImages[0] || '';
       images = carouselImages;
     } else if (type === 'reels') {
@@ -139,7 +168,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     }
 
     updatePost(post.id, {
-      title, caption, type, platform, scheduledDate: date,
+      title, caption: type === 'story' ? '' : caption, type, platform, scheduledDate: date,
       imageUrl, images, videoUrl: type === 'reels' ? videoUrl : undefined,
     });
     setEditing(false);
@@ -175,7 +204,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
         {editing ? (
           <div className="space-y-4 mt-2">
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" maxLength={100} />
-            <Textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Legenda..." rows={4} maxLength={2200} />
+            {type !== 'story' && (
+              <Textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Legenda..." rows={4} maxLength={2200} />
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Select value={type} onValueChange={(v) => setType(v as PostType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -196,7 +227,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               </Select>
             </div>
 
-            {(type === 'image' || type === 'story') && (
+            {(type === 'image') && (
               <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem do post" preview={mainImage} />
             )}
 
@@ -209,9 +240,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               </div>
             )}
 
-            {type === 'carousel' && (
+            {(type === 'carousel' || type === 'story') && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Imagens do Carrossel</p>
+                <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
                 <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
                 <div className="grid grid-cols-3 gap-2">
                   {carouselImages.map((img, i) => (
@@ -292,12 +323,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             </div>
 
             {/* Preview content */}
-            {post.type === 'carousel' && post.images && post.images.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {post.images.map((img, i) => (
-                  img && <img key={i} src={img} alt={`Slide ${i + 1}`} className="w-40 rounded-lg object-contain flex-shrink-0 border border-border" />
-                ))}
-              </div>
+            {(post.type === 'carousel' || post.type === 'story') && post.images && post.images.length > 0 ? (
+              <PreviewCarousel images={post.images.filter(Boolean)} />
             ) : post.imageUrl ? (
               <img src={post.imageUrl} alt={post.title} className="w-full rounded-lg object-contain border border-border" />
             ) : (
@@ -310,10 +337,12 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />
             )}
 
-            <div className="p-3 bg-secondary rounded-lg">
-              <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>
-              <p className="text-sm text-secondary-foreground whitespace-pre-wrap">{post.caption}</p>
-            </div>
+            {post.type !== 'story' && (
+              <div className="p-3 bg-secondary rounded-lg">
+                <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>
+                <p className="text-sm text-secondary-foreground whitespace-pre-wrap">{post.caption}</p>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</p>
             {assigned && <p className="text-xs text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>}
