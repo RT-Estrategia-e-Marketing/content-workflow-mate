@@ -2,7 +2,7 @@ import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform } from '@/lib/type
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { formatDateBR } from '@/lib/utils';
-import { Image, Film, Images, Instagram, Facebook, Smartphone } from 'lucide-react';
+import { Image, Film, Images, Instagram, Facebook, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, DragEvent } from 'react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -36,17 +36,26 @@ interface PostCardProps {
 
 function PostCard({ post }: PostCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
   const { profiles } = useProfiles();
   const assigned = profiles.find(m => m.user_id === post.assignedTo);
-  const thumbnail = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : '');
+
+  // For carousel/story, use images array; otherwise single image
+  const allImages = (post.type === 'carousel' || post.type === 'story') && post.images?.length
+    ? post.images.filter(Boolean)
+    : post.imageUrl ? [post.imageUrl] : [];
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('postId', post.id);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  // Story uses 9:16, reels uses 9:16, image/carousel uses auto (contain)
   const isVertical = post.type === 'story' || post.type === 'reels';
+
+  // Last client adjustment comment
+  const lastAdjustment = post.stage === 'adjustments'
+    ? [...post.comments].reverse().find(c => c.author === 'Cliente')
+    : null;
 
   return (
     <>
@@ -61,9 +70,28 @@ function PostCard({ post }: PostCardProps) {
           <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">{formatDateBR(post.scheduledDate)}</span>
         </div>
 
-        {thumbnail ? (
-          <div className={`rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
-            <img src={thumbnail} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+        {allImages.length > 0 ? (
+          <div className={`relative rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
+            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+            {allImages.length > 1 && (
+              <>
+                {slideIdx > 0 && (
+                  <button onClick={(e) => { e.stopPropagation(); setSlideIdx(i => i - 1); }} className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center z-10">
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                )}
+                {slideIdx < allImages.length - 1 && (
+                  <button onClick={(e) => { e.stopPropagation(); setSlideIdx(i => i + 1); }} className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center z-10">
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                  {allImages.map((_, i) => (
+                    <div key={i} className={`w-1 h-1 rounded-full ${i === slideIdx ? 'bg-primary' : 'bg-foreground/30'}`} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className={`rounded-md bg-muted flex items-center justify-center mb-2 ${isVertical ? 'aspect-[9/16]' : 'aspect-square'}`}>
@@ -81,10 +109,18 @@ function PostCard({ post }: PostCardProps) {
           <PlatformBadge platform={post.platform} />
         </div>
 
-        <p className="text-[9px] text-muted-foreground line-clamp-2 mb-1">{post.caption}</p>
+        {post.type !== 'story' && (
+          <p className="text-[9px] text-muted-foreground line-clamp-2 mb-1">{post.caption}</p>
+        )}
+
+        {lastAdjustment && (
+          <div className="mt-1 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive line-clamp-2">
+            💬 {lastAdjustment.text}
+          </div>
+        )}
 
         {assigned && (
-          <p className="text-[10px] text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>
         )}
       </div>
 

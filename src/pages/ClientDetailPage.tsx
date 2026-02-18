@@ -104,9 +104,9 @@ export default function ClientDetailPage() {
     let images: string[] | undefined;
     let videoUrl: string | undefined;
 
-    if (type === 'image' || type === 'story') {
+    if (type === 'image') {
       imageUrl = mainImage;
-    } else if (type === 'carousel') {
+    } else if (type === 'carousel' || type === 'story') {
       imageUrl = carouselImages[0] || '';
       images = carouselImages;
     } else if (type === 'reels') {
@@ -117,7 +117,7 @@ export default function ClientDetailPage() {
     addPost({
       clientId,
       title: title.trim(),
-      caption,
+      caption: type === 'story' ? '' : caption,
       imageUrl,
       images,
       videoUrl,
@@ -160,7 +160,9 @@ export default function ClientDetailPage() {
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
-                <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
+                {type !== 'story' && (
+                  <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <Select value={type} onValueChange={(v) => { setType(v as PostType); setMainImage(''); setCarouselImages([]); setReelsCover(''); setReelsVideo(''); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -181,7 +183,7 @@ export default function ClientDetailPage() {
                   </Select>
                 </div>
 
-                {(type === 'image' || type === 'story') && (
+                {type === 'image' && (
                   <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
                 )}
 
@@ -194,9 +196,9 @@ export default function ClientDetailPage() {
                   </div>
                 )}
 
-                {type === 'carousel' && (
+                {(type === 'carousel' || type === 'story') && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">Imagens do Carrossel</p>
+                    <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
                     <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
                     <div className="grid grid-cols-3 gap-2">
                       {carouselImages.map((img, i) => (
