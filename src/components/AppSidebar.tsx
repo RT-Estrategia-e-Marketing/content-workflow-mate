@@ -19,7 +19,12 @@ const NAV_ITEMS = [
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ];
 
-export default function AppSidebar() {
+interface AppSidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { profiles, refetch } = useProfiles();
@@ -73,7 +78,7 @@ export default function AppSidebar() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30">
+      <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30 transition-transform ${mobileOpen === false ? '-translate-x-full' : mobileOpen === true ? 'translate-x-0' : ''}`}>
         <div className="p-6 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
             <Kanban className="w-5 h-5 text-primary-foreground" />
@@ -142,6 +147,7 @@ export default function AppSidebar() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-primary text-primary-foreground'

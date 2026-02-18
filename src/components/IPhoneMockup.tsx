@@ -1,4 +1,4 @@
-import { Instagram, Facebook, Image, Film, Images } from 'lucide-react';
+import { Instagram, Facebook, Image, Film, Images, Smartphone } from 'lucide-react';
 import { Post, PostType, Platform } from '@/lib/types';
 
 interface IPhoneMockupProps {
@@ -17,6 +17,7 @@ function TypeBadge({ type }: { type: PostType }) {
     image: { icon: Image, label: 'Imagem' },
     reels: { icon: Film, label: 'Reels' },
     carousel: { icon: Images, label: 'Carrossel' },
+    story: { icon: Smartphone, label: 'Story' },
   };
   const { icon: Icon, label } = config[type];
   return (

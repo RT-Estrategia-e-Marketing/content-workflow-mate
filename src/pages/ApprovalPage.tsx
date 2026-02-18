@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
-import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -33,12 +33,12 @@ function InstagramMockup({ post }: { post: any }) {
       </div>
 
       {/* Post Image */}
-      <div className="relative aspect-square bg-muted">
+      <div className={`relative bg-muted ${post.type === 'story' ? 'aspect-[9/16]' : ''}`}>
         {post.type === 'reels' && post.videoUrl ? (
           <video src={post.videoUrl} controls className="w-full h-full object-cover" poster={post.imageUrl || undefined} />
         ) : allImages.length > 0 ? (
           <>
-            <img src={allImages[currentSlide] || ''} alt="" className="w-full h-full object-cover" />
+            <img src={allImages[currentSlide] || ''} alt="" className="w-full object-contain" />
             {allImages.length > 1 && (
               <>
                 {currentSlide > 0 && (
@@ -60,12 +60,13 @@ function InstagramMockup({ post }: { post: any }) {
             )}
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/40 gap-2">
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/40 gap-2 py-16">
             {post.type === 'reels' && <Film className="w-10 h-10" />}
             {post.type === 'carousel' && <Images className="w-10 h-10" />}
+            {post.type === 'story' && <Smartphone className="w-10 h-10" />}
             {post.type === 'image' && <Image className="w-10 h-10" />}
             <span className="text-sm">
-              {post.type === 'reels' ? 'Reels' : post.type === 'carousel' ? 'Carrossel' : 'Imagem'}
+              {post.type === 'reels' ? 'Reels' : post.type === 'carousel' ? 'Carrossel' : post.type === 'story' ? 'Story' : 'Imagem'}
             </span>
           </div>
         )}
@@ -76,6 +77,7 @@ function InstagramMockup({ post }: { post: any }) {
         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-foreground/5 text-muted-foreground">
           {post.type === 'reels' && <><Film className="w-3 h-3" /> Reels</>}
           {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel ({allImages.length} slides)</>}
+          {post.type === 'story' && <><Smartphone className="w-3 h-3" /> Story</>}
           {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
         </span>
         {post.scheduledDate && (

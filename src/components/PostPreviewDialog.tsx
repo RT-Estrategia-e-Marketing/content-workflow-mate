@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -183,6 +183,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                   <SelectItem value="image">Imagem</SelectItem>
                   <SelectItem value="reels">Reels</SelectItem>
                   <SelectItem value="carousel">Carrossel</SelectItem>
+                  <SelectItem value="story">Story</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
@@ -195,7 +196,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               </Select>
             </div>
 
-            {type === 'image' && (
+            {(type === 'image' || type === 'story') && (
               <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem do post" preview={mainImage} />
             )}
 
@@ -275,12 +276,13 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
           <div className="space-y-4 mt-2">
             {/* Stage badge */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-xs px-2 py-1 rounded-full ${currentStage?.color} ${currentStage?.borderColor} border font-medium`}>
+              <span className={`text-xs px-2 py-1 rounded-full bg-muted border border-border font-medium`}>
                 {currentStage?.label}
               </span>
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 {post.type === 'reels' && <><Film className="w-3 h-3" /> Reels</>}
                 {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel</>}
+                {post.type === 'story' && <><Smartphone className="w-3 h-3" /> Story</>}
                 {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
               </span>
               <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -293,11 +295,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             {post.type === 'carousel' && post.images && post.images.length > 0 ? (
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {post.images.map((img, i) => (
-                  img && <img key={i} src={img} alt={`Slide ${i + 1}`} className="w-40 h-40 rounded-lg object-cover flex-shrink-0 border border-border" />
+                  img && <img key={i} src={img} alt={`Slide ${i + 1}`} className="w-40 rounded-lg object-contain flex-shrink-0 border border-border" />
                 ))}
               </div>
             ) : post.imageUrl ? (
-              <img src={post.imageUrl} alt={post.title} className="w-full rounded-lg object-cover max-h-64 border border-border" />
+              <img src={post.imageUrl} alt={post.title} className="w-full rounded-lg object-contain border border-border" />
             ) : (
               <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
                 <span className="text-muted-foreground text-sm">Sem mídia</span>

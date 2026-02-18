@@ -1,4 +1,4 @@
-export type PostType = 'image' | 'reels' | 'carousel';
+export type PostType = 'image' | 'reels' | 'carousel' | 'story';
 export type Platform = 'instagram' | 'facebook' | 'both';
 export type KanbanStage = 'content' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved';
 
@@ -37,12 +37,12 @@ export interface Client {
   postsCount: number;
 }
 
-export const KANBAN_STAGES: { key: KanbanStage; label: string; color: string; borderColor: string }[] = [
-  { key: 'content', label: 'Conteúdo', color: 'bg-kanban-content', borderColor: 'border-kanban-content-border' },
-  { key: 'internal_approval', label: 'Aprovação Interna', color: 'bg-kanban-internal', borderColor: 'border-kanban-internal-border' },
-  { key: 'adjustments', label: 'Ajustes', color: 'bg-kanban-adjustments', borderColor: 'border-kanban-adjustments-border' },
-  { key: 'client_approval', label: 'Aprovação do Cliente', color: 'bg-kanban-client', borderColor: 'border-kanban-client-border' },
-  { key: 'approved', label: 'Aprovado', color: 'bg-kanban-approved', borderColor: 'border-kanban-approved-border' },
+export const KANBAN_STAGES: { key: KanbanStage; label: string }[] = [
+  { key: 'content', label: 'Conteúdo' },
+  { key: 'internal_approval', label: 'Aprovação Interna' },
+  { key: 'adjustments', label: 'Ajustes' },
+  { key: 'client_approval', label: 'Aprovação do Cliente' },
+  { key: 'approved', label: 'Aprovado' },
 ];
 
 export const MOCK_CLIENTS: Client[] = [

@@ -70,7 +70,7 @@ export default function CalendarPage() {
                       <button
                         key={p.id}
                         onClick={() => setSelectedPostId(p.id)}
-                        className={`w-full text-left text-[9px] px-1.5 py-0.5 rounded ${stage?.color} ${stage?.borderColor} border truncate font-medium hover:opacity-80 transition-opacity cursor-pointer`}
+                        className={`w-full text-left text-[9px] px-1.5 py-0.5 rounded bg-muted border border-border truncate font-medium hover:opacity-80 transition-opacity cursor-pointer`}
                       >
                         {p.client?.logo} {p.title}
                       </button>

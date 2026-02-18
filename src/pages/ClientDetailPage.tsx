@@ -104,7 +104,7 @@ export default function ClientDetailPage() {
     let images: string[] | undefined;
     let videoUrl: string | undefined;
 
-    if (type === 'image') {
+    if (type === 'image' || type === 'story') {
       imageUrl = mainImage;
     } else if (type === 'carousel') {
       imageUrl = carouselImages[0] || '';
@@ -168,6 +168,7 @@ export default function ClientDetailPage() {
                       <SelectItem value="image">Imagem</SelectItem>
                       <SelectItem value="reels">Reels</SelectItem>
                       <SelectItem value="carousel">Carrossel</SelectItem>
+                      <SelectItem value="story">Story</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
@@ -180,7 +181,7 @@ export default function ClientDetailPage() {
                   </Select>
                 </div>
 
-                {type === 'image' && (
+                {(type === 'image' || type === 'story') && (
                   <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
                 )}
 

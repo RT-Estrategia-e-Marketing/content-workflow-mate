@@ -111,12 +111,12 @@ export default function DashboardPage() {
                   onClick={() => setSelectedPostId(p.id)}
                   className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
                 >
-                  <div className={`w-2 h-2 rounded-full ${taskTab === 'overdue' ? 'bg-destructive' : stage?.borderColor?.replace('border-', 'bg-') || 'bg-muted'}`} />
+                  <div className={`w-2 h-2 rounded-full ${taskTab === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">{client?.name} · {formatDateBR(p.scheduledDate)}</p>
                   </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full ${stage?.color} ${stage?.borderColor} border`}>{stage?.label}</span>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border`}>{stage?.label}</span>
                 </button>
               );
             })}
