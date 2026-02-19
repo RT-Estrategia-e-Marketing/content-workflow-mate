@@ -23,6 +23,24 @@ export function useAppData() {
     localStorage.setItem('postflow_posts', JSON.stringify(posts));
   }, [posts]);
 
+  // Poll localStorage for changes from approval page (different tab)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const storedPosts = localStorage.getItem('postflow_posts');
+        if (storedPosts) {
+          const parsed = JSON.parse(storedPosts);
+          setPosts(prev => {
+            const prevJson = JSON.stringify(prev);
+            const newJson = JSON.stringify(parsed);
+            return prevJson !== newJson ? parsed : prev;
+          });
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   const addClient = useCallback((client: Omit<Client, 'id' | 'postsCount'>) => {
     const newClient: Client = { ...client, id: `c${Date.now()}`, postsCount: 0 };
     setClients(prev => [...prev, newClient]);
@@ -49,21 +67,33 @@ export function useAppData() {
   }, []);
 
   const movePost = useCallback((postId: string, newStage: KanbanStage) => {
-    setPosts(prev => prev.map(p => {
-      if (p.id !== postId) return p;
-      const updated = { ...p, stage: newStage };
-      if (newStage === 'client_approval') {
-        const token = Math.random().toString(36).substring(2, 10);
-        updated.approvalLink = token;
-        const link = `${window.location.origin}/approve/${token}`;
+    setPosts(prev => {
+      const updated = prev.map(p => {
+        if (p.id !== postId) return p;
+        const post = { ...p, stage: newStage };
+        if (newStage === 'client_approval') {
+          // Use client-based token: clientId as part of token
+          const existingToken = prev.find(
+            other => other.clientId === p.clientId && other.stage === 'client_approval' && other.approvalLink
+          )?.approvalLink;
+          post.approvalLink = existingToken || `${p.clientId}-${Math.random().toString(36).substring(2, 10)}`;
+        }
+        return post;
+      });
+
+      // Copy approval link after state update
+      const movedPost = updated.find(p => p.id === postId);
+      if (movedPost && newStage === 'client_approval' && movedPost.approvalLink) {
+        const link = `${window.location.origin}/approve/${movedPost.approvalLink}`;
         navigator.clipboard.writeText(link).then(() => {
           toast.success('Link de aprovação copiado para a área de transferência!');
         }).catch(() => {
           toast.info(`Link: ${link}`);
         });
       }
+
       return updated;
-    }));
+    });
   }, []);
 
   const assignPost = useCallback((postId: string, memberId: string) => {
