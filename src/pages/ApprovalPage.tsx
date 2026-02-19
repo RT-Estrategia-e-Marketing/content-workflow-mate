@@ -26,11 +26,11 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
   const isLogoUrl = clientLogo.startsWith('http');
   const isVertical = post.type === 'story' || post.type === 'reels';
 
-  if (post.stage === 'approved' || status === 'approved') {
+  if (post.stage === 'approved' || post.stage === 'scheduled' || status === 'approved') {
     return (
       <div className="w-full max-w-[375px] mx-auto mb-6 text-center animate-slide-in py-8">
         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-        <p className="text-sm font-semibold text-card-foreground">Aprovado!</p>
+        <p className="text-sm font-semibold text-gray-900">Aprovado!</p>
       </div>
     );
   }
@@ -39,7 +39,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
     return (
       <div className="w-full max-w-[375px] mx-auto mb-6 text-center animate-slide-in py-8">
         <MessageSquare className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-        <p className="text-sm font-semibold text-card-foreground">Ajuste solicitado</p>
+        <p className="text-sm font-semibold text-gray-900">Ajuste solicitado</p>
       </div>
     );
   }
@@ -157,7 +157,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
 
       <div className="h-2" />
 
-      {/* Approve / Adjustment buttons */}
+      {/* Individual Approve / Adjustment */}
       <div className="px-3 pb-3 space-y-2">
         <Button onClick={handleApprove} className="w-full bg-green-500 hover:bg-green-600 text-white" size="sm">
           <CheckCircle className="w-4 h-4 mr-2" /> Aprovar
@@ -185,8 +185,7 @@ export default function ApprovalPage() {
   const { createNotification } = useNotifications();
   const [allApproved, setAllApproved] = useState(false);
 
-  // Find all posts with this approval token
-  const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved'));
+  const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled'));
   const client = approvalPosts.length > 0 ? clients.find(c => c.id === approvalPosts[0].clientId) : null;
 
   if (approvalPosts.length === 0) {
@@ -200,7 +199,7 @@ export default function ApprovalPage() {
     );
   }
 
-  if (allApproved || approvalPosts.every(p => p.stage === 'approved')) {
+  if (allApproved || approvalPosts.every(p => p.stage === 'approved' || p.stage === 'scheduled')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center animate-slide-in">
@@ -230,7 +229,6 @@ export default function ApprovalPage() {
     updatePost(postId, { comments: [...post.comments, newComment] });
     movePost(postId, 'adjustments');
 
-    // Notify assigned user
     if (post.assignedTo) {
       createNotification({
         user_id: post.assignedTo,
@@ -248,8 +246,8 @@ export default function ApprovalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-[420px] mx-auto">
+    <div className="min-h-screen bg-gray-50 pb-28">
+      <div className="max-w-[420px] mx-auto pt-8 px-4">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -267,13 +265,6 @@ export default function ApprovalPage() {
           </p>
         </div>
 
-        {/* Approve All button */}
-        {pendingPosts.length > 1 && (
-          <Button onClick={handleApproveAll} className="w-full mb-6 bg-green-500 hover:bg-green-600 text-white" size="lg">
-            <CheckCheck className="w-5 h-5 mr-2" /> Aprovar Todos ({pendingPosts.length})
-          </Button>
-        )}
-
         {/* Posts */}
         {approvalPosts.map(post => (
           <InstagramMockup
@@ -286,6 +277,23 @@ export default function ApprovalPage() {
           />
         ))}
       </div>
+
+      {/* Floating Approve All */}
+      {pendingPosts.length > 1 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <div className="bg-gradient-to-t from-gray-50 via-gray-50/95 to-transparent pt-6 pb-6 px-4">
+            <div className="max-w-[420px] mx-auto">
+              <Button
+                onClick={handleApproveAll}
+                className="w-full bg-green-500 hover:bg-green-600 text-white shadow-2xl shadow-green-500/30 rounded-2xl h-14 text-base font-semibold"
+                size="lg"
+              >
+                <CheckCheck className="w-5 h-5 mr-2" /> Aprovar Todos ({pendingPosts.length})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,10 +39,26 @@ export function useNotifications() {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   }, []);
 
+  const markAsUnread = useCallback(async (id: string) => {
+    await supabase.from('notifications').update({ read: false } as any).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n));
+  }, []);
+
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
     await supabase.from('notifications').update({ read: true } as any).eq('user_id', user.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, [user]);
+
+  const deleteNotification = useCallback(async (id: string) => {
+    await supabase.from('notifications').delete().eq('id', id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const deleteAllNotifications = useCallback(async () => {
+    if (!user) return;
+    await supabase.from('notifications').delete().eq('user_id', user.id);
+    setNotifications([]);
   }, [user]);
 
   const createNotification = useCallback(async (data: {
@@ -60,5 +76,5 @@ export function useNotifications() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  return { notifications, loading, unreadCount, markAsRead, markAllAsRead, createNotification, refetch: fetchNotifications };
+  return { notifications, loading, unreadCount, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications, createNotification, refetch: fetchNotifications };
 }
