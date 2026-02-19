@@ -1,8 +1,9 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, MailOpen } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useApp } from '@/contexts/AppContext';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,9 +27,11 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profiles, refetch } = useProfiles();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
+  const { posts, clients } = useApp();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -71,10 +74,20 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
     toast.success('Perfil atualizado!');
   };
 
+  const handleNotificationClick = (n: typeof notifications[0]) => {
+    markAsRead(n.id);
+    // Navigate to the client that owns the post
+    const post = posts.find(p => p.id === n.post_id);
+    if (post) {
+      navigate(`/clients/${post.clientId}`);
+      onClose?.();
+    }
+  };
+
   const initials = (myProfile?.full_name || user?.email || '?')
     .split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
-  const recentNotifications = notifications.slice(0, 5);
+  const recentNotifications = notifications.slice(0, 10);
 
   return (
     <>
@@ -100,37 +113,62 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
             <PopoverContent className="w-80 p-0" align="start" side="bottom">
               <div className="p-3 border-b border-border flex items-center justify-between">
                 <h3 className="text-sm font-display font-bold text-foreground">Notificações</h3>
-                {unreadCount > 0 && (
-                  <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Marcar todas
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  {unreadCount > 0 && (
+                    <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Ler todas
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button onClick={deleteAllNotifications} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-2">
+                      <Trash2 className="w-3 h-3" /> Limpar
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="max-h-[300px] overflow-y-auto">
+              <div className="max-h-[350px] overflow-y-auto">
                 {recentNotifications.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
                 ) : (
                   recentNotifications.map(n => {
                     const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
                     return (
-                      <button
+                      <div
                         key={n.id}
-                        onClick={() => markAsRead(n.id)}
                         className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
                           n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
                         }`}
                       >
-                        <div className="flex items-start gap-2">
-                          {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                          <div className="min-w-0">
-                            <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {new Date(n.created_at).toLocaleDateString('pt-BR')}
-                              {fromProfile && ` · ${fromProfile.full_name}`}
-                            </p>
+                        <button
+                          onClick={() => handleNotificationClick(n)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-start gap-2">
+                            {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {new Date(n.created_at).toLocaleDateString('pt-BR')}
+                                {fromProfile && ` · ${fromProfile.full_name}`}
+                              </p>
+                            </div>
                           </div>
+                        </button>
+                        <div className="flex items-center gap-2 mt-1 pl-3.5">
+                          {n.read ? (
+                            <button onClick={() => markAsUnread(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                              <MailOpen className="w-2.5 h-2.5" /> Não lida
+                            </button>
+                          ) : (
+                            <button onClick={() => markAsRead(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" /> Lida
+                            </button>
+                          )}
+                          <button onClick={() => deleteNotification(n.id)} className="text-[9px] text-destructive/70 hover:text-destructive flex items-center gap-0.5">
+                            <Trash2 className="w-2.5 h-2.5" /> Apagar
+                          </button>
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 )}

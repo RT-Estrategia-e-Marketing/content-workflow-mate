@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, CheckCircle, Clock, Bell, Check } from 'lucide-react';
+import { Users, FileText, CheckCircle, Clock, Bell, Check, Trash2, MailOpen } from 'lucide-react';
 import { formatDateBR } from '@/lib/utils';
 import { useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
@@ -14,31 +14,37 @@ export default function DashboardPage() {
   const { clients, posts } = useApp();
   const { user } = useAuth();
   const { profiles } = useProfiles();
-  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const { notifications, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications, unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [taskTab, setTaskTab] = useState<'pending' | 'overdue' | 'done'>('pending');
 
   const myProfile = profiles.find(p => p.user_id === user?.id);
 
-  // My tasks: posts assigned to me
   const myPosts = posts.filter(p => p.assignedTo === user?.id);
-  const pendingPosts = myPosts.filter(p => p.stage !== 'approved');
-  const donePosts = myPosts.filter(p => p.stage === 'approved');
+  const pendingPosts = myPosts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled');
+  const donePosts = myPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled');
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());
 
   const stats = [
     { label: 'Clientes', value: clients.length, icon: Users, color: 'text-primary' },
     { label: 'Posts Totais', value: posts.length, icon: FileText, color: 'text-accent' },
-    { label: 'Aprovados', value: posts.filter(p => p.stage === 'approved').length, icon: CheckCircle, color: 'text-success' },
-    { label: 'Pendentes', value: posts.filter(p => p.stage !== 'approved').length, icon: Clock, color: 'text-warning' },
+    { label: 'Aprovados', value: posts.filter(p => p.stage === 'approved' || p.stage === 'scheduled').length, icon: CheckCircle, color: 'text-success' },
+    { label: 'Pendentes', value: posts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled').length, icon: Clock, color: 'text-warning' },
   ];
 
   const taskList = taskTab === 'pending' ? pendingPosts.filter(p => !overduePosts.includes(p)) : taskTab === 'overdue' ? overduePosts : donePosts;
   const selectedPost = selectedPostId ? posts.find(p => p.id === selectedPostId) : null;
 
-  // People - collaborators
   const activeProfiles = profiles.slice(0, 6);
+
+  const handleNotificationClick = (n: typeof notifications[0]) => {
+    markAsRead(n.id);
+    const post = posts.find(p => p.id === n.post_id);
+    if (post) {
+      navigate(`/clients/${post.clientId}`);
+    }
+  };
 
   return (
     <div className="animate-slide-in">
@@ -52,7 +58,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.map(stat => (
           <div key={stat.label} className="bg-card rounded-xl p-5 border border-border shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -64,7 +70,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* My Tasks Widget */}
         <div className="bg-card rounded-xl border border-border shadow-sm p-5">
           <div className="flex items-center gap-3 mb-4">
@@ -116,7 +122,7 @@ export default function DashboardPage() {
                     <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">{client?.name} · {formatDateBR(p.scheduledDate)}</p>
                   </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border`}>{stage?.label}</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border">{stage?.label}</span>
                 </button>
               );
             })}
@@ -129,7 +135,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-3">
             {clients.map(client => {
               const clientPosts = posts.filter(p => p.clientId === client.id);
-              const approvedCount = clientPosts.filter(p => p.stage === 'approved').length;
+              const approvedCount = clientPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled').length;
               return (
                 <button
                   key={client.id}
@@ -189,11 +195,18 @@ export default function DashboardPage() {
                 </span>
               )}
             </h2>
-            {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
-                <Check className="w-3 h-3 mr-1" /> Marcar todas
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs h-7 px-2">
+                  <Check className="w-3 h-3 mr-1" /> Ler todas
+                </Button>
+              )}
+              {notifications.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={deleteAllNotifications} className="text-xs h-7 px-2 text-destructive hover:text-destructive">
+                  <Trash2 className="w-3 h-3 mr-1" /> Limpar
+                </Button>
+              )}
+            </div>
           </div>
           <div className="space-y-2 max-h-[250px] overflow-y-auto">
             {notifications.length === 0 && (
@@ -202,22 +215,40 @@ export default function DashboardPage() {
             {notifications.slice(0, 10).map(n => {
               const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
               return (
-                <button
+                <div
                   key={n.id}
-                  onClick={() => { markAsRead(n.id); setSelectedPostId(n.post_id); }}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'}`}
+                  className={`p-3 rounded-lg transition-colors ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'}`}
                 >
-                  <div className="flex items-start gap-2">
-                    {!n.read && <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                    <div className="min-w-0">
-                      <p className="text-xs text-card-foreground">{n.message}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {new Date(n.created_at).toLocaleDateString('pt-BR')}
-                        {fromProfile && ` · ${fromProfile.full_name}`}
-                      </p>
+                  <button
+                    onClick={() => handleNotificationClick(n)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start gap-2">
+                      {!n.read && <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="text-xs text-card-foreground">{n.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(n.created_at).toLocaleDateString('pt-BR')}
+                          {fromProfile && ` · ${fromProfile.full_name}`}
+                        </p>
+                      </div>
                     </div>
+                  </button>
+                  <div className="flex items-center gap-2 mt-1.5 pl-4">
+                    {n.read ? (
+                      <button onClick={() => markAsUnread(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                        <MailOpen className="w-2.5 h-2.5" /> Não lida
+                      </button>
+                    ) : (
+                      <button onClick={() => markAsRead(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                        <Check className="w-2.5 h-2.5" /> Lida
+                      </button>
+                    )}
+                    <button onClick={() => deleteNotification(n.id)} className="text-[9px] text-destructive/70 hover:text-destructive flex items-center gap-0.5">
+                      <Trash2 className="w-2.5 h-2.5" /> Apagar
+                    </button>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

@@ -33,11 +33,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day_range_end: "day-range-end",
         day_selected:
           "border-2 border-primary bg-transparent text-foreground hover:bg-transparent hover:text-foreground focus:bg-transparent focus:text-foreground",
-        day_today: "border-2 border-accent text-accent-foreground bg-transparent",
+        day_today: "border-2 border-primary text-foreground bg-transparent",
         day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-transparent aria-selected:text-muted-foreground aria-selected:opacity-30",
         day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        day_range_middle: "aria-selected:bg-transparent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...classNames,
       }}
