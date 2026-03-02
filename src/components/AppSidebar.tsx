@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, MailOpen } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -30,8 +30,8 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profiles, refetch } = useProfiles();
-  const { notifications, unreadCount, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications();
-  const { posts, clients } = useApp();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteAllNotifications } = useNotifications();
+  const { posts } = useApp();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -76,7 +76,6 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
 
   const handleNotificationClick = (n: typeof notifications[0]) => {
     markAsRead(n.id);
-    // Navigate to the client that owns the post
     const post = posts.find(p => p.id === n.post_id);
     if (post) {
       navigate(`/clients/${post.clientId}`);
@@ -133,42 +132,24 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
                   recentNotifications.map(n => {
                     const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
                     return (
-                      <div
+                      <button
                         key={n.id}
+                        onClick={() => handleNotificationClick(n)}
                         className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
                           n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
                         }`}
                       >
-                        <button
-                          onClick={() => handleNotificationClick(n)}
-                          className="w-full text-left"
-                        >
-                          <div className="flex items-start gap-2">
-                            {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {new Date(n.created_at).toLocaleDateString('pt-BR')}
-                                {fromProfile && ` · ${fromProfile.full_name}`}
-                              </p>
-                            </div>
+                        <div className="flex items-start gap-2">
+                          {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {new Date(n.created_at).toLocaleDateString('pt-BR')}
+                              {fromProfile && ` · ${fromProfile.full_name}`}
+                            </p>
                           </div>
-                        </button>
-                        <div className="flex items-center gap-2 mt-1 pl-3.5">
-                          {n.read ? (
-                            <button onClick={() => markAsUnread(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-                              <MailOpen className="w-2.5 h-2.5" /> Não lida
-                            </button>
-                          ) : (
-                            <button onClick={() => markAsRead(n.id)} className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-                              <Check className="w-2.5 h-2.5" /> Lida
-                            </button>
-                          )}
-                          <button onClick={() => deleteNotification(n.id)} className="text-[9px] text-destructive/70 hover:text-destructive flex items-center gap-0.5">
-                            <Trash2 className="w-2.5 h-2.5" /> Apagar
-                          </button>
                         </div>
-                      </div>
+                      </button>
                     );
                   })
                 )}
