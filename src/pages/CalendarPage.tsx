@@ -3,8 +3,9 @@ import { useMemo, useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STAGE_COLORS: Record<string, string> = {
   content: 'bg-blue-400',
@@ -12,7 +13,7 @@ const STAGE_COLORS: Record<string, string> = {
   adjustments: 'bg-orange-400',
   client_approval: 'bg-purple-400',
   approved: 'bg-green-400',
-  scheduled: 'bg-emerald-500',
+  scheduled: 'bg-sky-400',
 };
 
 export default function CalendarPage() {
@@ -45,36 +46,23 @@ export default function CalendarPage() {
       <h1 className="text-3xl font-display font-bold text-foreground mb-1">Calendário</h1>
       <p className="text-muted-foreground mb-6">Visualize as publicações agendadas</p>
 
-      {/* Client filter + legend */}
+      {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex gap-1 flex-wrap">
-          <button
-            onClick={() => setFilterClient('all')}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              filterClient === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-            }`}
-          >
-            Todos
-          </button>
-          {clients.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setFilterClient(c.id)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                filterClient === c.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-              }`}
-            >
-              {c.logo} {c.name}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          {KANBAN_STAGES.map(s => (
-            <span key={s.key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[s.key] || 'bg-muted-foreground'}`} />
-              {s.label}
-            </span>
-          ))}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="h-8 w-[200px] text-xs">
+              <SelectValue placeholder="Filtrar por cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os clientes</SelectItem>
+              {clients.map(c => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -88,6 +76,16 @@ export default function CalendarPage() {
         <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1))} className="p-2 rounded-lg hover:bg-secondary transition-colors">
           <ChevronRight className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 flex-wrap mb-3 px-1">
+        {KANBAN_STAGES.map(s => (
+          <span key={s.key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[s.key] || 'bg-muted-foreground'}`} />
+            {s.label}
+          </span>
+        ))}
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
@@ -118,7 +116,7 @@ export default function CalendarPage() {
                         className="w-full text-left text-[9px] px-1.5 py-0.5 rounded bg-muted border border-border truncate font-medium hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1"
                       >
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${stageColor}`} />
-                        <span className="truncate">{p.client?.logo} {p.title}</span>
+                        <span className="truncate">{p.client?.name} - {p.title}</span>
                       </button>
                     );
                   })}

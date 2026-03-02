@@ -282,7 +282,7 @@ export default function ApprovalPage() {
       {pendingPosts.length > 1 && (
         <div className="fixed bottom-0 left-0 right-0 z-50">
           <div className="bg-gradient-to-t from-gray-50 via-gray-50/95 to-transparent pt-6 pb-6 px-4">
-            <div className="max-w-[420px] mx-auto">
+            <div className="max-w-[375px] mx-auto">
               <Button
                 onClick={handleApproveAll}
                 className="w-full bg-green-500 hover:bg-green-600 text-white shadow-2xl shadow-green-500/30 rounded-2xl h-14 text-base font-semibold"

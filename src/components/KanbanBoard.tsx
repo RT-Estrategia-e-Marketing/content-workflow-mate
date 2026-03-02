@@ -2,10 +2,11 @@ import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform } from '@/lib/type
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { formatDateBR } from '@/lib/utils';
-import { Image, Film, Images, Instagram, Facebook, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Image, Film, Images, Instagram, Facebook, Smartphone, ChevronLeft, ChevronRight, Link2, Copy } from 'lucide-react';
 import { useState, DragEvent } from 'react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 function TypeIcon({ type }: { type: string }) {
   if (type === 'reels') return <Film className="w-3 h-3" />;
@@ -30,6 +31,15 @@ function PlatformBadge({ platform }: { platform: Platform }) {
   );
 }
 
+const STAGE_COLORS: Record<string, string> = {
+  content: 'bg-blue-400',
+  internal_approval: 'bg-yellow-400',
+  adjustments: 'bg-orange-400',
+  client_approval: 'bg-purple-400',
+  approved: 'bg-green-400',
+  scheduled: 'bg-sky-400',
+};
+
 interface PostCardProps {
   post: Post;
 }
@@ -40,7 +50,6 @@ function PostCard({ post }: PostCardProps) {
   const { profiles } = useProfiles();
   const assigned = profiles.find(m => m.user_id === post.assignedTo);
 
-  // For carousel/story, use images array; otherwise single image
   const allImages = (post.type === 'carousel' || post.type === 'story') && post.images?.length
     ? post.images.filter(Boolean)
     : post.imageUrl ? [post.imageUrl] : [];
@@ -52,10 +61,21 @@ function PostCard({ post }: PostCardProps) {
 
   const isVertical = post.type === 'story' || post.type === 'reels';
 
-  // Last client adjustment comment
   const lastAdjustment = post.stage === 'adjustments'
     ? [...post.comments].reverse().find(c => c.author === 'Cliente')
     : null;
+
+  const handleCopyApprovalLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.approvalLink) {
+      const link = `${window.location.origin}/approve/${post.approvalLink}`;
+      navigator.clipboard.writeText(link).then(() => {
+        toast.success('Link de aprovação copiado!');
+      }).catch(() => {
+        toast.info(`Link: ${link}`);
+      });
+    }
+  };
 
   return (
     <>
@@ -119,6 +139,16 @@ function PostCard({ post }: PostCardProps) {
           </div>
         )}
 
+        {/* Copy approval link button */}
+        {post.stage === 'client_approval' && post.approvalLink && (
+          <button
+            onClick={handleCopyApprovalLink}
+            className="mt-1.5 flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            <Copy className="w-3 h-3" /> Copiar link de aprovação
+          </button>
+        )}
+
         {assigned && (
           <p className="text-[10px] text-muted-foreground mt-1">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>
         )}
@@ -154,42 +184,58 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   };
 
   return (
-    <ScrollArea className="w-full">
-      <div className="flex gap-4 min-h-[600px] pb-4">
-        {KANBAN_STAGES.map(stage => {
-          const stagePosts = posts.filter(p => p.stage === stage.key);
-          const isDragOver = dragOverStage === stage.key;
-          return (
-            <div
-              key={stage.key}
-              onDragOver={(e) => handleDragOver(e, stage.key)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, stage.key)}
-              className={`min-w-[280px] w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-3 transition-all ${
-                isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-foreground/80">{stage.label}</h3>
-                <span className="text-[10px] font-semibold bg-foreground/10 text-foreground/60 rounded-full px-2 py-0.5">
-                  {stagePosts.length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {stagePosts.map(post => (
-                  <PostCard key={post.id} post={post} />
-                ))}
-                {stagePosts.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground/50 text-center py-8">
-                    {isDragOver ? 'Soltar aqui' : 'Nenhum post'}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+    <div>
+      {/* Legend */}
+      <div className="flex items-center gap-3 flex-wrap mb-3">
+        {KANBAN_STAGES.map(s => (
+          <span key={s.key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[s.key] || 'bg-muted-foreground'}`} />
+            {s.label}
+          </span>
+        ))}
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+
+      <ScrollArea className="w-full">
+        <div className="flex gap-4 min-h-[600px] pb-4">
+          {KANBAN_STAGES.map(stage => {
+            const stagePosts = posts.filter(p => p.stage === stage.key);
+            const isDragOver = dragOverStage === stage.key;
+            const stageColor = STAGE_COLORS[stage.key] || 'bg-muted-foreground';
+            return (
+              <div
+                key={stage.key}
+                onDragOver={(e) => handleDragOver(e, stage.key)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, stage.key)}
+                className={`min-w-[280px] w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-3 transition-all ${
+                  isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${stageColor}`} />
+                    <h3 className="text-xs font-bold text-foreground/80">{stage.label}</h3>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-foreground/10 text-foreground/60 rounded-full px-2 py-0.5">
+                    {stagePosts.length}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {stagePosts.map(post => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                  {stagePosts.length === 0 && (
+                    <p className="text-[10px] text-muted-foreground/50 text-center py-8">
+                      {isDragOver ? 'Soltar aqui' : 'Nenhum post'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 }
