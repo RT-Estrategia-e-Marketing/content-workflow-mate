@@ -90,7 +90,7 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
 
   return (
     <>
-      <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30 transition-transform ${mobileOpen === false ? '-translate-x-full' : mobileOpen === true ? 'translate-x-0' : ''}`}>
+      <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30 transition-transform duration-300 ease-in-out ${mobileOpen === false ? '-translate-x-full' : mobileOpen === true ? 'translate-x-0 shadow-2xl' : ''}`}>
         <div className="p-6 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
             <Kanban className="w-5 h-5 text-primary-foreground" />

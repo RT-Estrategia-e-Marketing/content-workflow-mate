@@ -207,7 +207,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 onDragOver={(e) => handleDragOver(e, stage.key)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.key)}
-                className={`min-w-[280px] w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-3 transition-all ${
+                className={`min-w-[240px] sm:min-w-[280px] w-[240px] sm:w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-2 sm:p-3 transition-all ${
                   isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
                 }`}
               >

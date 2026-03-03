@@ -39,19 +39,12 @@ export default function ClientDetailPage() {
   // Edit client state
   const [editName, setEditName] = useState('');
   const [editLogo, setEditLogo] = useState('');
-  const [editUsePhoto, setEditUsePhoto] = useState(false);
-  const [editEmoji, setEditEmoji] = useState('🏢');
-
-  const EMOJI_OPTIONS = ['🏢', '🎨', '🍕', '📱', '🎵', '🏋️', '☕', '🚀', '💎', '🌿'];
 
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
   const openEditClient = () => {
     setEditName(client.name);
-    const isUrl = client.logo.startsWith('http');
-    setEditUsePhoto(isUrl);
-    setEditLogo(isUrl ? client.logo : '');
-    setEditEmoji(isUrl ? '🏢' : client.logo);
+    setEditLogo(client.logo && client.logo.startsWith('http') ? client.logo : '');
     setEditOpen(true);
   };
 
@@ -59,7 +52,7 @@ export default function ClientDetailPage() {
     if (!editName.trim()) return;
     updateClient(client.id, {
       name: editName.trim(),
-      logo: editUsePhoto && editLogo ? editLogo : editEmoji,
+      logo: editLogo || '',
     });
     setEditOpen(false);
   };
@@ -132,133 +125,139 @@ export default function ClientDetailPage() {
     setAssignedTo(''); setOpen(false);
   };
 
+  const isUrl = client.logo && client.logo.startsWith('http');
+
   return (
     <div className="animate-slide-in">
-      <button onClick={() => navigate('/clients')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+      <button onClick={() => navigate('/clients')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors active:scale-95">
         <ArrowLeft className="w-4 h-4" /> Voltar
       </button>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          {client.logo.startsWith('http') ? (
-            <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-lg object-cover" />
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {isUrl ? (
+            <img src={client.logo} alt={client.name} className="w-8 h-8 md:w-10 md:h-10 rounded-lg object-contain flex-shrink-0" />
           ) : (
-            <span className="text-3xl">{client.logo}</span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold flex-shrink-0">
+              {client.name.charAt(0)}
+            </div>
           )}
-          <h1 className="text-3xl font-display font-bold text-foreground">{client.name}</h1>
-          <Button variant="ghost" size="sm" onClick={openEditClient}>
+          <h1 className="text-xl md:text-3xl font-display font-bold text-foreground truncate">{client.name}</h1>
+          <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
             <Edit2 className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" /> Novo Post</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-display">Criar Post</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
-                {type !== 'story' && (
-                  <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <Select value={type} onValueChange={(v) => { setType(v as PostType); setMainImage(''); setCarouselImages([]); setReelsCover(''); setReelsVideo(''); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="image">Imagem</SelectItem>
-                      <SelectItem value="reels">Reels</SelectItem>
-                      <SelectItem value="carousel">Carrossel</SelectItem>
-                      <SelectItem value="story">Story</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="both">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {type === 'image' && (
-                  <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
-                )}
-
-                {type === 'reels' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
-                    <FileUpload bucket="post-media" onUpload={setReelsCover} label="Upload da capa" preview={reelsCover} />
-                    <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
-                    <FileUpload bucket="post-media" onUpload={setReelsVideo} label="Upload do vídeo" preview={reelsVideo} accept="video/*" />
-                  </div>
-                )}
-
-                {(type === 'carousel' || type === 'story') && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
-                    <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
-                    <div className="grid grid-cols-3 gap-2">
-                      {carouselImages.map((img, i) => (
-                        <div
-                          key={i}
-                          draggable
-                          onDragStart={(e) => handleCarouselDragStart(e, i)}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => handleCarouselDrop(e, i)}
-                          className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}
-                        >
-                          {img ? (
-                            <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" />
-                          ) : (
-                            <div className="w-full aspect-square bg-muted flex items-center justify-center">
-                              <Upload className="w-4 h-4 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
-                            <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
-                            <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
-                              <X className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
-                        </div>
-                      ))}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
-                      <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
-                    </Button>
-                  </div>
-                )}
-
-                <DatePicker value={date} onChange={setDate} />
-
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-                  <Select value={assignedTo} onValueChange={setAssignedTo}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Selecionar responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles.map(m => (
-                        <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                          {m.full_name} · {m.job_title || m.priority}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button onClick={handleAdd} className="w-full">Criar Post</Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="md:h-10 md:px-4">
+              <Plus className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Novo Post</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-display">Criar Post</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
+              {type !== 'story' && (
+                <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={type} onValueChange={(v) => { setType(v as PostType); setMainImage(''); setCarouselImages([]); setReelsCover(''); setReelsVideo(''); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="reels">Reels</SelectItem>
+                    <SelectItem value="carousel">Carrossel</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+              {type === 'image' && (
+                <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
+              )}
+
+              {type === 'reels' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setReelsCover} label="Upload da capa" preview={reelsCover} />
+                  <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setReelsVideo} label="Upload do vídeo" preview={reelsVideo} accept="video/*" />
+                </div>
+              )}
+
+              {(type === 'carousel' || type === 'story') && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
+                  <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
+                  <div className="grid grid-cols-3 gap-2">
+                    {carouselImages.map((img, i) => (
+                      <div
+                        key={i}
+                        draggable
+                        onDragStart={(e) => handleCarouselDragStart(e, i)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleCarouselDrop(e, i)}
+                        className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}
+                      >
+                        {img ? (
+                          <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" />
+                        ) : (
+                          <div className="w-full aspect-square bg-muted flex items-center justify-center">
+                            <Upload className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
+                          <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
+                          <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                        <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
+                      </div>
+                    ))}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
+                  </Button>
+                </div>
+              )}
+
+              <DatePicker value={date} onChange={setDate} />
+
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
+                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Selecionar responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(m => (
+                      <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
+                        {m.full_name} · {m.job_title || m.priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={handleAdd} className="w-full">Criar Post</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Edit Client Dialog */}
+      {/* Edit Client Dialog - Photo only */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
@@ -266,27 +265,7 @@ export default function ClientDetailPage() {
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <Input placeholder="Nome do cliente" value={editName} onChange={e => setEditName(e.target.value)} maxLength={100} />
-            <div>
-              <div className="flex gap-2 mb-2">
-                <button onClick={() => setEditUsePhoto(false)} className={`text-xs px-3 py-1 rounded-full transition-colors ${!editUsePhoto ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                  Emoji
-                </button>
-                <button onClick={() => setEditUsePhoto(true)} className={`text-xs px-3 py-1 rounded-full transition-colors ${editUsePhoto ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                  Foto
-                </button>
-              </div>
-              {editUsePhoto ? (
-                <FileUpload bucket="client-logos" onUpload={setEditLogo} label="Upload logo do cliente" preview={editLogo} />
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {EMOJI_OPTIONS.map(e => (
-                    <button key={e} onClick={() => setEditEmoji(e)} className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${editEmoji === e ? 'bg-primary/20 ring-2 ring-primary' : 'bg-secondary hover:bg-secondary/80'}`}>
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FileUpload bucket="client-logos" onUpload={setEditLogo} label="Upload logo do cliente" preview={editLogo} />
             <Button onClick={handleEditClient} className="w-full">Salvar</Button>
           </div>
         </DialogContent>
