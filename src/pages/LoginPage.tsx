@@ -5,16 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Kanban, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function LoginPage() {
   const { signIn, signUp, signOut, user } = useAuth();
   const { isApproved, loading: roleLoading } = useUserRole();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('postflow_remember') === 'true' ? (localStorage.getItem('postflow_email') || '') : '');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [signedUp, setSignedUp] = useState(false);
+  const [remember, setRemember] = useState(() => localStorage.getItem('postflow_remember') === 'true');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +31,13 @@ export default function LoginPage() {
         setSignedUp(true);
       }
     } else {
+      if (remember) {
+        localStorage.setItem('postflow_remember', 'true');
+        localStorage.setItem('postflow_email', email);
+      } else {
+        localStorage.removeItem('postflow_remember');
+        localStorage.removeItem('postflow_email');
+      }
       const { error } = await signIn(email, password);
       if (error) {
         toast.error('E-mail ou senha inválidos');
@@ -131,6 +140,18 @@ export default function LoginPage() {
               required
               minLength={6}
             />
+            {!isSignUp && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember"
+                  checked={remember}
+                  onCheckedChange={(checked) => setRemember(!!checked)}
+                />
+                <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer select-none">
+                  Lembrar meu e-mail
+                </label>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
             </Button>

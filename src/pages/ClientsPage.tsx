@@ -7,27 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import FileUpload from '@/components/FileUpload';
 
-const EMOJI_OPTIONS = ['🏢', '🎨', '🍕', '📱', '🎵', '🏋️', '☕', '🚀', '💎', '🌿'];
+
 
 export default function ClientsPage() {
   const { clients, posts, addClient } = useApp();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [selectedEmoji, setSelectedEmoji] = useState('🏢');
   const [logoUrl, setLogoUrl] = useState('');
-  const [usePhoto, setUsePhoto] = useState(false);
 
   const handleAdd = () => {
     if (!name.trim()) return;
     addClient({
       name: name.trim(),
-      logo: usePhoto && logoUrl ? logoUrl : selectedEmoji,
+      logo: logoUrl || '',
       color: `hsl(${Math.random() * 360}, 60%, 50%)`,
     });
     setName('');
     setLogoUrl('');
-    setUsePhoto(false);
     setOpen(false);
   };
 
@@ -49,43 +46,12 @@ export default function ClientsPage() {
             <div className="space-y-4 mt-4">
               <Input placeholder="Nome do cliente" value={name} onChange={e => setName(e.target.value)} maxLength={100} />
 
-              <div>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={() => setUsePhoto(false)}
-                    className={`text-xs px-3 py-1 rounded-full transition-colors ${!usePhoto ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
-                  >
-                    Emoji
-                  </button>
-                  <button
-                    onClick={() => setUsePhoto(true)}
-                    className={`text-xs px-3 py-1 rounded-full transition-colors ${usePhoto ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}
-                  >
-                    Foto
-                  </button>
-                </div>
-
-                {usePhoto ? (
-                  <FileUpload
-                    bucket="client-logos"
-                    onUpload={setLogoUrl}
-                    label="Upload logo do cliente"
-                    preview={logoUrl}
-                  />
-                ) : (
-                  <div className="flex gap-2 flex-wrap">
-                    {EMOJI_OPTIONS.map(e => (
-                      <button
-                        key={e}
-                        onClick={() => setSelectedEmoji(e)}
-                        className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${selectedEmoji === e ? 'bg-primary/20 ring-2 ring-primary' : 'bg-secondary hover:bg-secondary/80'}`}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <FileUpload
+                bucket="client-logos"
+                onUpload={setLogoUrl}
+                label="Upload logo do cliente"
+                preview={logoUrl}
+              />
 
               <Button onClick={handleAdd} className="w-full">Adicionar</Button>
             </div>
@@ -96,7 +62,7 @@ export default function ClientsPage() {
       <div className="grid grid-cols-3 gap-4">
         {clients.map(client => {
           const clientPosts = posts.filter(p => p.clientId === client.id);
-          const isUrl = client.logo.startsWith('http');
+          const isUrl = client.logo && client.logo.startsWith('http');
           return (
             <button
               key={client.id}
@@ -104,9 +70,11 @@ export default function ClientsPage() {
               className="bg-card rounded-xl p-6 border border-border shadow-sm text-left hover:shadow-md hover:border-primary/30 transition-all group"
             >
               {isUrl ? (
-                <img src={client.logo} alt={client.name} className="w-12 h-12 rounded-lg object-cover mb-3" />
+                <img src={client.logo} alt={client.name} className="w-12 h-12 rounded-lg object-contain mb-3" />
               ) : (
-                <span className="text-3xl mb-3 block">{client.logo}</span>
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 text-primary font-bold text-lg">
+                  {client.name.charAt(0)}
+                </div>
               )}
               <h3 className="font-display font-bold text-lg text-card-foreground group-hover:text-primary transition-colors">{client.name}</h3>
               <p className="text-sm text-muted-foreground mt-1">{clientPosts.length} posts</p>
