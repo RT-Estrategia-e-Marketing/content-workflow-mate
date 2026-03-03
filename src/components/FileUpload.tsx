@@ -54,15 +54,17 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
     <div className={className}>
       <input ref={inputRef} type="file" accept={accept} onChange={handleUpload} className="hidden" />
       {previewUrl ? (
-        <div className="relative group">
-          {isVideo ? (
-            <video src={previewUrl} className="w-full h-32 object-cover rounded-lg border border-border" controls />
-          ) : (
-            <img src={previewUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg border border-border" />
-          )}
+        <div className="relative group rounded-lg border border-border bg-muted/20 p-2">
+          <div className="w-full h-40 rounded-md overflow-hidden bg-background flex items-center justify-center">
+            {isVideo ? (
+              <video src={previewUrl} className="max-w-full max-h-full object-contain" controls />
+            ) : (
+              <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
+            )}
+          </div>
           <button
             onClick={handleClear}
-            className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-3 right-3 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <X className="w-3 h-3" />
           </button>
