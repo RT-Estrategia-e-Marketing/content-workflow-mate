@@ -2,12 +2,17 @@ name: Deploy PostFlow
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main"] # Verifique se sua branch principal se chama 'main'
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+# Permite apenas um deploy por vez para evitar conflitos
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,7 +30,7 @@ jobs:
       - name: Install and Build
         run: |
           npm install
-          npm run predeploy
+          npm run predeploy # Executa o build e cria o 404.html conforme configuramos
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -35,6 +40,13 @@ jobs:
         with:
           path: './dist'
 
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
