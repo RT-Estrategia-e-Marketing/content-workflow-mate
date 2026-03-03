@@ -40,18 +40,19 @@ export default function CalendarPage() {
   const selectedPost = selectedPostId ? posts.find(p => p.id === selectedPostId) : null;
 
   const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const WEEKDAYS_SHORT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   return (
     <div className="animate-slide-in">
-      <h1 className="text-3xl font-display font-bold text-foreground mb-1">Calendário</h1>
-      <p className="text-muted-foreground mb-6">Visualize as publicações agendadas</p>
+      <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">Calendário</h1>
+      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">Visualize as publicações agendadas</p>
 
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="h-8 w-[200px] text-xs">
+            <SelectTrigger className="h-8 w-full max-w-[200px] text-xs">
               <SelectValue placeholder="Filtrar por cliente" />
             </SelectTrigger>
             <SelectContent>
@@ -67,46 +68,67 @@ export default function CalendarPage() {
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1))} className="p-2 rounded-lg hover:bg-secondary transition-colors">
+        <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1))} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xl font-display font-bold capitalize">
+        <h2 className="text-lg md:text-xl font-display font-bold capitalize">
           {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
         </h2>
-        <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1))} className="p-2 rounded-lg hover:bg-secondary transition-colors">
+        <button onClick={() => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1))} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 flex-wrap mb-3 px-1">
+      <div className="flex items-center gap-2 md:gap-3 flex-wrap mb-3 px-1">
         {KANBAN_STAGES.map(s => (
-          <span key={s.key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <span key={s.key} className="flex items-center gap-1 text-[9px] md:text-[10px] text-muted-foreground">
             <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[s.key] || 'bg-muted-foreground'}`} />
-            {s.label}
+            <span className="hidden sm:inline">{s.label}</span>
+            <span className="sm:hidden">{s.label.split(' ')[0]}</span>
           </span>
         ))}
       </div>
 
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="grid grid-cols-7">
-          {WEEKDAYS.map(d => (
-            <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-3 border-b border-border">{d}</div>
+          {WEEKDAYS.map((d, i) => (
+            <div key={d} className="text-center text-[10px] md:text-xs font-semibold text-muted-foreground py-2 md:py-3 border-b border-border">
+              <span className="hidden sm:inline">{d}</span>
+              <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
+            </div>
           ))}
         </div>
         <div className="grid grid-cols-7">
           {Array.from({ length: startDayOfWeek }).map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-[110px] border-b border-r border-border bg-muted/30" />
+            <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[110px] border-b border-r border-border bg-muted/30" />
           ))}
           {days.map(day => {
             const dayPosts = postsWithDates.filter(p => isSameDay(p.date, day));
             const isToday = isSameDay(day, new Date());
             return (
-              <div key={day.toISOString()} className={`min-h-[110px] border-b border-r border-border p-2 ${isToday ? 'bg-primary/5' : ''}`}>
-                <span className={`text-xs font-medium ${isToday ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center' : 'text-muted-foreground'}`}>
+              <div key={day.toISOString()} className={`min-h-[60px] md:min-h-[110px] border-b border-r border-border p-1 md:p-2 ${isToday ? 'bg-primary/5' : ''}`}>
+                <span className={`text-[10px] md:text-xs font-medium ${isToday ? 'bg-primary text-primary-foreground w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center' : 'text-muted-foreground'}`}>
                   {format(day, 'd')}
                 </span>
-                <div className="mt-1 space-y-1">
+                {/* Mobile: just dots */}
+                <div className="flex flex-wrap gap-0.5 mt-1 md:hidden">
+                  {dayPosts.slice(0, 4).map(p => {
+                    const stageColor = STAGE_COLORS[p.stage] || 'bg-muted-foreground';
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPostId(p.id)}
+                        className={`w-2 h-2 rounded-full ${stageColor} active:scale-125 transition-transform`}
+                      />
+                    );
+                  })}
+                  {dayPosts.length > 4 && (
+                    <span className="text-[8px] text-muted-foreground">+{dayPosts.length - 4}</span>
+                  )}
+                </div>
+                {/* Desktop: full labels */}
+                <div className="mt-1 space-y-1 hidden md:block">
                   {dayPosts.slice(0, 3).map(p => {
                     const stageColor = STAGE_COLORS[p.stage] || 'bg-muted-foreground';
                     return (

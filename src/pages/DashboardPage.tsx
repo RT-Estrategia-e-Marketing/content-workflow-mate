@@ -48,45 +48,45 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-slide-in">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground mb-1">
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">
             Olá, {myProfile?.full_name?.split(' ')[0] || 'Usuário'} 👋
           </h1>
-          <p className="text-muted-foreground">Veja o que está acontecendo hoje</p>
+          <p className="text-sm md:text-base text-muted-foreground">Veja o que está acontecendo hoje</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         {stats.map(stat => (
-          <div key={stat.label} className="bg-card rounded-xl p-5 border border-border shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+          <div key={stat.label} className="bg-card rounded-xl p-4 md:p-5 border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-2 md:mb-3">
+              <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${stat.color}`} />
             </div>
-            <p className="text-2xl font-display font-bold text-card-foreground">{stat.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+            <p className="text-xl md:text-2xl font-display font-bold text-card-foreground">{stat.value}</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground mt-1">{stat.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* My Tasks Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5">
           <div className="flex items-center gap-3 mb-4">
             {myProfile?.avatar_url ? (
-              <img src={myProfile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+              <img src={myProfile.avatar_url} alt="" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center text-xs md:text-sm font-bold text-primary">
                 {(myProfile?.full_name || '?').substring(0, 2).toUpperCase()}
               </div>
             )}
             <div>
-              <h2 className="font-display font-bold text-card-foreground">Minhas tarefas</h2>
+              <h2 className="font-display font-bold text-sm md:text-base text-card-foreground">Minhas tarefas</h2>
             </div>
           </div>
 
-          <div className="flex gap-1 mb-4">
+          <div className="flex gap-1 mb-4 overflow-x-auto">
             {[
               { key: 'pending' as const, label: 'Próximas', count: pendingPosts.length - overduePosts.length },
               { key: 'overdue' as const, label: 'Atrasadas', count: overduePosts.length },
@@ -95,7 +95,7 @@ export default function DashboardPage() {
               <button
                 key={tab.key}
                 onClick={() => setTaskTab(tab.key)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap active:scale-95 ${
                   taskTab === tab.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'
                 }`}
               >
@@ -115,14 +115,14 @@ export default function DashboardPage() {
                 <button
                   key={p.id}
                   onClick={() => setSelectedPostId(p.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left active:scale-[0.98]"
                 >
-                  <div className={`w-2 h-2 rounded-full ${taskTab === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground'}`} />
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${taskTab === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-card-foreground truncate">{p.title}</p>
+                    <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{p.title}</p>
                     <p className="text-[10px] text-muted-foreground">{client?.name} · {formatDateBR(p.scheduledDate)}</p>
                   </div>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border">{stage?.label}</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border whitespace-nowrap hidden sm:inline">{stage?.label}</span>
                 </button>
               );
             })}
@@ -130,27 +130,28 @@ export default function DashboardPage() {
         </div>
 
         {/* Projects Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5">
-          <h2 className="font-display font-bold text-card-foreground mb-4">Projetos</h2>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5">
+          <h2 className="font-display font-bold text-sm md:text-base text-card-foreground mb-4">Projetos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
             {clients.map(client => {
               const clientPosts = posts.filter(p => p.clientId === client.id);
               const approvedCount = clientPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled').length;
+              const isUrl = client.logo && client.logo.startsWith('http');
               return (
                 <button
                   key={client.id}
                   onClick={() => navigate(`/clients/${client.id}`)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left active:scale-[0.98]"
                 >
-                  {client.logo.startsWith('http') ? (
-                    <img src={client.logo} alt={client.name} className="w-9 h-9 rounded-lg object-cover" />
+                  {isUrl ? (
+                    <img src={client.logo} alt={client.name} className="w-9 h-9 rounded-lg object-contain" />
                   ) : (
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: `${client.color}20` }}>
-                      {client.logo}
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary font-bold">
+                      {client.name.charAt(0)}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-card-foreground truncate">{client.name}</p>
+                    <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{client.name}</p>
                     <p className="text-[10px] text-muted-foreground">{approvedCount}/{clientPosts.length} aprovados</p>
                   </div>
                 </button>
@@ -160,12 +161,12 @@ export default function DashboardPage() {
         </div>
 
         {/* People Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-bold text-card-foreground">Pessoas</h2>
-            <span className="text-xs text-muted-foreground">Colaboradores</span>
+            <h2 className="font-display font-bold text-sm md:text-base text-card-foreground">Pessoas</h2>
+            <span className="text-[10px] md:text-xs text-muted-foreground">Colaboradores</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
             {activeProfiles.map(p => (
               <div key={p.id} className="flex items-center gap-3 p-2">
                 {p.avatar_url ? (
@@ -176,7 +177,7 @@ export default function DashboardPage() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-card-foreground truncate">{p.full_name}</p>
+                  <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{p.full_name}</p>
                   <p className="text-[10px] text-muted-foreground truncate">{p.job_title || p.priority}</p>
                 </div>
               </div>
@@ -185,9 +186,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Notifications Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-bold text-card-foreground flex items-center gap-2">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="font-display font-bold text-sm md:text-base text-card-foreground flex items-center gap-2">
               <Bell className="w-4 h-4" /> Notificações
               {unreadCount > 0 && (
                 <span className="bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -195,14 +196,14 @@ export default function DashboardPage() {
                 </span>
               )}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs h-7 px-2">
-                  <Check className="w-3 h-3 mr-1" /> Ler todas
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-[10px] md:text-xs h-7 px-2">
+                  <Check className="w-3 h-3 mr-1" /> Ler
                 </Button>
               )}
               {notifications.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={deleteAllNotifications} className="text-xs h-7 px-2 text-destructive hover:text-destructive">
+                <Button variant="ghost" size="sm" onClick={deleteAllNotifications} className="text-[10px] md:text-xs h-7 px-2 text-destructive hover:text-destructive">
                   <Trash2 className="w-3 h-3 mr-1" /> Limpar
                 </Button>
               )}
@@ -218,7 +219,7 @@ export default function DashboardPage() {
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'}`}
+                  className={`w-full text-left p-3 rounded-lg transition-colors active:scale-[0.98] ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'}`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
