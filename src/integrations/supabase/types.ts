@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          logo: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          logo?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          logo?: string
+          name?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           client_id: string
@@ -49,6 +73,68 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      posts: {
+        Row: {
+          approval_link: string | null
+          assigned_to: string | null
+          caption: string
+          client_id: string
+          comments: Json
+          created_at: string
+          id: string
+          image_url: string
+          images: Json | null
+          platform: string
+          scheduled_date: string
+          stage: string
+          title: string
+          type: string
+          video_url: string | null
+        }
+        Insert: {
+          approval_link?: string | null
+          assigned_to?: string | null
+          caption?: string
+          client_id: string
+          comments?: Json
+          created_at?: string
+          id?: string
+          image_url?: string
+          images?: Json | null
+          platform?: string
+          scheduled_date?: string
+          stage?: string
+          title: string
+          type?: string
+          video_url?: string | null
+        }
+        Update: {
+          approval_link?: string | null
+          assigned_to?: string | null
+          caption?: string
+          client_id?: string
+          comments?: Json
+          created_at?: string
+          id?: string
+          image_url?: string
+          images?: Json | null
+          platform?: string
+          scheduled_date?: string
+          stage?: string
+          title?: string
+          type?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

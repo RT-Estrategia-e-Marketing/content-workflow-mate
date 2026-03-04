@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import KanbanBoard from '@/components/KanbanBoard';
-import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
-  const { clients, addPost, updateClient } = useApp();
+  const { clients, addPost, updateClient, deleteClient } = useApp();
   const { profiles } = useProfiles();
   const client = clients.find(c => c.id === clientId);
   const [open, setOpen] = useState(false);
@@ -39,6 +39,10 @@ export default function ClientDetailPage() {
   // Edit client state
   const [editName, setEditName] = useState('');
   const [editLogo, setEditLogo] = useState('');
+
+  // Delete client state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
@@ -144,6 +148,9 @@ export default function ClientDetailPage() {
           <h1 className="text-xl md:text-3xl font-display font-bold text-foreground truncate">{client.name}</h1>
           <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
             <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setDeleteConfirm(''); setDeleteOpen(true); }} className="flex-shrink-0 text-muted-foreground hover:text-destructive">
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -267,6 +274,37 @@ export default function ClientDetailPage() {
             <Input placeholder="Nome do cliente" value={editName} onChange={e => setEditName(e.target.value)} maxLength={100} />
             <FileUpload bucket="client-logos" onUpload={setEditLogo} label="Upload logo do cliente" preview={editLogo} />
             <Button onClick={handleEditClient} className="w-full">Salvar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Client Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Excluir Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Você está prestes a excluir <strong className="text-foreground">{client.name}</strong> e todos os seus posts. Esta ação não pode ser desfeita.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">
+                Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
+              </label>
+              <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="EXCLUIR" className="font-mono" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
+              <Button
+                variant="destructive"
+                onClick={() => { deleteClient(client.id); navigate('/clients'); }}
+                disabled={deleteConfirm !== 'EXCLUIR'}
+                className="flex-1"
+              >
+                Excluir Cliente
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
