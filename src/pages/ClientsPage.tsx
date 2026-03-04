@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,16 @@ import { Button } from '@/components/ui/button';
 import FileUpload from '@/components/FileUpload';
 
 export default function ClientsPage() {
-  const { clients, posts, addClient } = useApp();
+  const { clients, posts, addClient, deleteClient } = useApp();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+
+  // Delete confirmation state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const handleAdd = () => {
     if (!name.trim()) return;
@@ -24,6 +29,21 @@ export default function ClientsPage() {
     setName('');
     setLogoUrl('');
     setOpen(false);
+  };
+
+  const openDeleteDialog = (e: React.MouseEvent, client: { id: string; name: string }) => {
+    e.stopPropagation();
+    setDeleteTarget(client);
+    setDeleteConfirm('');
+    setDeleteOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget || deleteConfirm !== 'EXCLUIR') return;
+    deleteClient(deleteTarget.id);
+    setDeleteOpen(false);
+    setDeleteTarget(null);
+    setDeleteConfirm('');
   };
 
   return (
@@ -64,24 +84,71 @@ export default function ClientsPage() {
           const clientPosts = posts.filter(p => p.clientId === client.id);
           const isUrl = client.logo && client.logo.startsWith('http');
           return (
-            <button
+            <div
               key={client.id}
-              onClick={() => navigate(`/clients/${client.id}`)}
-              className="bg-card rounded-xl p-5 md:p-6 border border-border shadow-sm text-left hover:shadow-md hover:border-primary/30 transition-all group active:scale-[0.98]"
+              className="bg-card rounded-xl p-5 md:p-6 border border-border shadow-sm text-left hover:shadow-md hover:border-primary/30 transition-all group relative"
             >
-              {isUrl ? (
-                <img src={client.logo} alt={client.name} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-contain mb-3" />
-              ) : (
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 text-primary font-bold text-base md:text-lg">
-                  {client.name.charAt(0)}
-                </div>
-              )}
-              <h3 className="font-display font-bold text-base md:text-lg text-card-foreground group-hover:text-primary transition-colors">{client.name}</h3>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">{clientPosts.length} posts</p>
-            </button>
+              <button
+                onClick={() => navigate(`/clients/${client.id}`)}
+                className="w-full text-left active:scale-[0.98]"
+              >
+                {isUrl ? (
+                  <img src={client.logo} alt={client.name} className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-contain mb-3" />
+                ) : (
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 text-primary font-bold text-base md:text-lg">
+                    {client.name.charAt(0)}
+                  </div>
+                )}
+                <h3 className="font-display font-bold text-base md:text-lg text-card-foreground group-hover:text-primary transition-colors">{client.name}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1">{clientPosts.length} posts</p>
+              </button>
+              <button
+                onClick={(e) => openDeleteDialog(e, client)}
+                className="absolute top-3 right-3 p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                title="Excluir cliente"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           );
         })}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Excluir Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Você está prestes a excluir <strong className="text-foreground">{deleteTarget?.name}</strong> e todos os seus posts. Esta ação não pode ser desfeita.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-1 block">
+                Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
+              </label>
+              <Input
+                value={deleteConfirm}
+                onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder="EXCLUIR"
+                className="font-mono"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleteConfirm !== 'EXCLUIR'}
+                className="flex-1"
+              >
+                Excluir Cliente
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

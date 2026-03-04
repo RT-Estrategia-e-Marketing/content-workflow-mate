@@ -23,9 +23,10 @@ const NAV_ITEMS = [
 interface AppSidebarProps {
   mobileOpen?: boolean;
   onClose?: () => void;
+  hideHeader?: boolean;
 }
 
-export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
+export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -55,19 +56,16 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
   const handleSaveProfile = async () => {
     if (!myProfile) return;
     setSaving(true);
-
     await supabase.from('profiles').update({
       full_name: editName.trim(),
       job_title: editJobTitle.trim(),
       avatar_url: editAvatar || null,
     }).eq('id', myProfile.id);
-
     if (newPassword.trim().length >= 6) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) toast.error('Erro ao alterar senha: ' + error.message);
       else toast.success('Senha alterada!');
     }
-
     refetch();
     setSaving(false);
     setProfileOpen(false);
@@ -91,74 +89,54 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
   return (
     <>
       <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col z-30 transition-transform duration-300 ease-in-out ${mobileOpen === false ? '-translate-x-full' : mobileOpen === true ? 'translate-x-0 shadow-2xl' : ''}`}>
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-            <Kanban className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-display text-xl font-bold text-sidebar-primary-foreground">PostFlow</span>
-          
-          {/* Notification Bell */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="ml-auto relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
-                <Bell className="w-4 h-4 text-sidebar-foreground" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="start" side="bottom">
-              <div className="p-3 border-b border-border flex items-center justify-between">
-                <h3 className="text-sm font-display font-bold text-foreground">Notificações</h3>
-                <div className="flex items-center gap-1">
+        {/* Header - hidden on mobile/tablet since AppLayout shows it */}
+        {!hideHeader && (
+          <div className="p-6 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <Kanban className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="font-display text-xl font-bold text-sidebar-primary-foreground">PostFlow</span>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="ml-auto relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
+                  <Bell className="w-4 h-4 text-sidebar-foreground" />
                   {unreadCount > 0 && (
-                    <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Ler todas
-                    </button>
+                    <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                   )}
-                  {notifications.length > 0 && (
-                    <button onClick={deleteAllNotifications} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-2">
-                      <Trash2 className="w-3 h-3" /> Limpar
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="max-h-[350px] overflow-y-auto">
-                {recentNotifications.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
-                ) : (
-                  recentNotifications.map(n => {
-                    const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => handleNotificationClick(n)}
-                        className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
-                          n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2">
-                          {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {new Date(n.created_at).toLocaleDateString('pt-BR')}
-                              {fromProfile && ` · ${fromProfile.full_name}`}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                {renderNotificationContent()}
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
-        <nav className="flex-1 px-3 mt-4 space-y-1">
+        {/* On mobile/tablet, show notification bell at top of sidebar */}
+        {hideHeader && (
+          <div className="p-4 flex items-center justify-end">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
+                  <Bell className="w-4 h-4 text-sidebar-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                {renderNotificationContent()}
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+
+        <nav className="flex-1 px-3 mt-2 space-y-1">
           {NAV_ITEMS.map(item => {
             const isActive = location.pathname === item.to ||
               (item.to !== '/' && location.pathname.startsWith(item.to));
@@ -281,4 +259,55 @@ export default function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
       </Dialog>
     </>
   );
+
+  function renderNotificationContent() {
+    return (
+      <>
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-display font-bold text-foreground">Notificações</h3>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
+                <Check className="w-3 h-3" /> Ler todas
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button onClick={deleteAllNotifications} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-2">
+                <Trash2 className="w-3 h-3" /> Limpar
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="max-h-[350px] overflow-y-auto">
+          {recentNotifications.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
+          ) : (
+            recentNotifications.map(n => {
+              const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n)}
+                  className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
+                    n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(n.created_at).toLocaleDateString('pt-BR')}
+                        {fromProfile && ` · ${fromProfile.full_name}`}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </>
+    );
+  }
 }
