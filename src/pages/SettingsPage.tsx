@@ -6,7 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,12 +19,29 @@ export default function SettingsPage() {
   const { allRoles, isAdmin, approveUser, rejectUser, refetch: refetchRoles } = useUserRole();
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [newName, setNewName] = useState('');
   const [newJobTitle, setNewJobTitle] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Delete user state
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserName, setDeleteUserName] = useState('');
+  const [deleteUserConfirm, setDeleteUserConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const handleAddMember = async () => {
     if (!newEmail.trim() || !newPassword.trim() || !newName.trim()) return;
+    if (newPassword !== newPasswordConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
     setLoading(true);
 
     const { error } = await supabase.auth.signUp({
@@ -38,9 +56,30 @@ export default function SettingsPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(`Convite enviado para ${newEmail}`);
-      setNewEmail(''); setNewPassword(''); setNewName(''); setNewJobTitle('');
-      setTimeout(() => { refetch(); refetchRoles(); }, 1000);
+      // Auto-approve the user created by admin
+      toast.success(`Usuário ${newName.trim()} criado com sucesso!`);
+      setNewEmail(''); setNewPassword(''); setNewPasswordConfirm(''); setNewName(''); setNewJobTitle('');
+      // Wait for triggers to create role, then approve
+      setTimeout(async () => {
+        refetch();
+        refetchRoles();
+        // Find and approve the newly created user
+        const { data: newRoles } = await supabase.from('user_roles').select('*').order('created_at', { ascending: false }).limit(5);
+        if (newRoles) {
+          const pending = newRoles.find((r: any) => !r.approved);
+          if (pending) {
+            await approveUser(pending.user_id, 'member');
+            if (newJobTitle.trim()) {
+              const { data: newProfiles } = await supabase.from('profiles').select('*').eq('user_id', pending.user_id).limit(1);
+              if (newProfiles && newProfiles.length > 0) {
+                await supabase.from('profiles').update({ job_title: newJobTitle.trim() } as any).eq('id', newProfiles[0].id);
+              }
+            }
+            refetch();
+            refetchRoles();
+          }
+        }
+      }, 1500);
     }
     setLoading(false);
   };
@@ -57,11 +96,47 @@ export default function SettingsPage() {
   };
 
   const handleReject = async (userId: string) => {
-    await rejectUser(userId);
-    toast.success('Usuário rejeitado');
+    // Reject = delete from auth entirely
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId },
+      });
+      if (error) throw error;
+      toast.success('Usuário rejeitado e removido');
+      refetchRoles();
+      refetch();
+    } catch (err: any) {
+      toast.error('Erro ao rejeitar: ' + (err.message || ''));
+    }
+    setDeleting(false);
   };
 
-  // Pending users (not approved)
+  const handleDeleteUser = async () => {
+    if (!deleteUserId || deleteUserConfirm !== 'EXCLUIR') return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: deleteUserId },
+      });
+      if (error) throw error;
+      toast.success('Usuário excluído');
+      setDeleteUserOpen(false);
+      refetchRoles();
+      refetch();
+    } catch (err: any) {
+      toast.error('Erro ao excluir: ' + (err.message || ''));
+    }
+    setDeleting(false);
+  };
+
+  const openDeleteUser = (userId: string, name: string) => {
+    setDeleteUserId(userId);
+    setDeleteUserName(name);
+    setDeleteUserConfirm('');
+    setDeleteUserOpen(true);
+  };
+
   const pendingRoles = allRoles.filter(r => !r.approved);
   const approvedRoles = allRoles.filter(r => r.approved);
 
@@ -107,7 +182,7 @@ export default function SettingsPage() {
               const profile = profiles.find(p => p.user_id === role.user_id);
               return (
                 <div key={role.id} className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <p className="text-sm font-medium text-foreground">{profile?.full_name || 'Novo usuário'}</p>
                       <p className="text-xs text-muted-foreground">{role.user_id.substring(0, 8)}...</p>
@@ -126,7 +201,7 @@ export default function SettingsPage() {
                       <Button size="sm" variant="outline" onClick={() => handleApprove(role.user_id, 'member')} className="h-8">
                         <CheckCircle className="w-3 h-3 mr-1" /> Aprovar
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleReject(role.user_id)} className="h-8">
+                      <Button size="sm" variant="destructive" onClick={() => handleReject(role.user_id)} className="h-8" disabled={deleting}>
                         <XCircle className="w-3 h-3" />
                       </Button>
                     </div>
@@ -147,13 +222,14 @@ export default function SettingsPage() {
         <div className="space-y-3 mb-6">
           {profiles.map(m => {
             const role = approvedRoles.find(r => r.user_id === m.user_id);
+            const isMe = m.user_id === user?.id;
             return (
               <div key={m.id} className="p-3 bg-secondary rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">{m.full_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {m.user_id === user?.id ? '(Você)' : ''} {m.job_title && `· ${m.job_title}`}
+                      {isMe ? '(Você)' : ''} {m.job_title && `· ${m.job_title}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -173,6 +249,16 @@ export default function SettingsPage() {
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium capitalize">
                         {role.role}
                       </span>
+                    )}
+                    {isAdmin && !isMe && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteUser(m.user_id, m.full_name)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -200,7 +286,29 @@ export default function SettingsPage() {
               <Input placeholder="Nome completo" value={newName} onChange={e => setNewName(e.target.value)} maxLength={100} />
               <Input placeholder="Função (ex: Designer, Redator)" value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} maxLength={100} />
               <Input type="email" placeholder="E-mail" value={newEmail} onChange={e => setNewEmail(e.target.value)} maxLength={255} />
-              <Input type="password" placeholder="Senha (mín. 6 caracteres)" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={6} />
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="Senha (mín. 6 caracteres)"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Input
+                type={showNewPassword ? 'text' : 'password'}
+                placeholder="Confirmar senha"
+                value={newPasswordConfirm}
+                onChange={e => setNewPasswordConfirm(e.target.value)}
+                minLength={6}
+              />
               <Button onClick={handleAddMember} className="w-full" disabled={loading}>
                 {loading ? 'Adicionando...' : 'Adicionar'}
               </Button>
@@ -208,6 +316,42 @@ export default function SettingsPage() {
           </div>
         )}
       </section>
+
+      {/* Delete User Dialog */}
+      <Dialog open={deleteUserOpen} onOpenChange={setDeleteUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Excluir Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Você está prestes a excluir <strong className="text-foreground">{deleteUserName}</strong> permanentemente. Esta ação não pode ser desfeita.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-2 block">
+                Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
+              </label>
+              <Input
+                value={deleteUserConfirm}
+                onChange={e => setDeleteUserConfirm(e.target.value)}
+                placeholder="EXCLUIR"
+                className="font-mono"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setDeleteUserOpen(false)} className="flex-1">Cancelar</Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteUser}
+                disabled={deleteUserConfirm !== 'EXCLUIR' || deleting}
+                className="flex-1"
+              >
+                {deleting ? 'Excluindo...' : 'Excluir Usuário'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
