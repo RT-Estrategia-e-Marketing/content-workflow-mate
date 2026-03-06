@@ -16,6 +16,14 @@ export function useProfiles() {
   const [loading, setLoading] = useState(true);
 
   const fetchProfiles = useCallback(async () => {
+    // Only fetch if session exists
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setProfiles([]);
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase.from('profiles').select('*').order('created_at');
     if (data) setProfiles(data as Profile[]);
     setLoading(false);
@@ -23,6 +31,14 @@ export function useProfiles() {
 
   useEffect(() => {
     fetchProfiles();
+  }, [fetchProfiles]);
+
+  // Handle auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchProfiles();
+    });
+    return () => { subscription.unsubscribe(); };
   }, [fetchProfiles]);
 
   // Realtime subscription for profiles

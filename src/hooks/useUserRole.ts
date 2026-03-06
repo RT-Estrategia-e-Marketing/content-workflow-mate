@@ -37,6 +37,15 @@ export function useUserRole() {
     fetchAllRoles();
   }, [fetchRole, fetchAllRoles]);
 
+  // Handle auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchRole();
+      fetchAllRoles();
+    });
+    return () => { subscription.unsubscribe(); };
+  }, [fetchRole, fetchAllRoles]);
+
   // Realtime subscription for user_roles changes
   useEffect(() => {
     const channel = supabase
