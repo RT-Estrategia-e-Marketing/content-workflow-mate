@@ -108,12 +108,12 @@ export default function ClientsPage() {
           <DialogHeader>
             <DialogTitle className="font-display text-destructive">Excluir Cliente</DialogTitle>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <div className="mt-2 space-y-5">
             <p className="text-sm text-muted-foreground">
               Você está prestes a excluir <strong className="text-foreground">{deleteTarget?.name}</strong> e todos os seus posts. Esta ação não pode ser desfeita.
             </p>
             <div>
-              <label className="text-xs text-muted-foreground font-medium mb-2 block">
+              <label className="text-xs text-muted-foreground font-medium mb-3 block">
                 Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
               </label>
               <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="EXCLUIR" className="font-mono" />

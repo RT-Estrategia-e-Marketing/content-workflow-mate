@@ -25,5 +25,16 @@ export function useProfiles() {
     fetchProfiles();
   }, [fetchProfiles]);
 
+  // Realtime subscription for profiles
+  useEffect(() => {
+    const channel = supabase
+      .channel('profiles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchProfiles();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchProfiles]);
+
   return { profiles, loading, refetch: fetchProfiles };
 }
