@@ -198,7 +198,6 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   };
 
   const handleDeletePost = () => {
-    if (deleteConfirm !== 'EXCLUIR') return;
     deletePost(post.id);
     setDeleteOpen(false);
     onOpenChange(false);
@@ -488,15 +487,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             <p className="text-sm text-muted-foreground">
               Você está prestes a excluir o post <strong className="text-foreground">"{post.title}"</strong>. Esta ação não pode ser desfeita.
             </p>
-            <div>
-              <label className="text-xs text-muted-foreground font-medium mb-3 block">
-                Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
-              </label>
-              <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="EXCLUIR" className="font-mono" />
-            </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
-              <Button variant="destructive" onClick={handleDeletePost} disabled={deleteConfirm !== 'EXCLUIR'} className="flex-1">
+              <Button variant="destructive" onClick={handleDeletePost} className="flex-1">
                 Excluir Post
               </Button>
             </div>
