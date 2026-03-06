@@ -58,7 +58,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
         {stats.map(stat => (
           <div key={stat.label} className="bg-card rounded-xl p-4 md:p-5 border border-border shadow-sm">
             <div className="flex items-center justify-between mb-2 md:mb-3">
@@ -70,7 +70,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* My Tasks Widget */}
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5 h-full flex flex-col">
           <div className="flex items-center gap-3 mb-4">
