@@ -60,7 +60,7 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
         {stats.map(stat => (
-          <div key={stat.label} className="bg-card rounded-xl p-4 md:p-5 border border-border shadow-sm">
+          <div key={stat.label} className="bg-card rounded-xl p-6 border border-border shadow-sm">
             <div className="flex items-center justify-between mb-2 md:mb-3">
               <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${stat.color}`} />
             </div>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* My Tasks Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
           <div className="flex items-center gap-3 mb-4">
             {myProfile?.avatar_url ? (
               <img src={myProfile.avatar_url} alt="" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover" />
@@ -130,7 +130,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Projects Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
           <h2 className="font-display font-bold text-sm md:text-base text-card-foreground mb-4">Projetos</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
             {clients.map(client => {
@@ -161,7 +161,7 @@ export default function DashboardPage() {
         </div>
 
         {/* People Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-bold text-sm md:text-base text-card-foreground">Pessoas</h2>
             <span className="text-[10px] md:text-xs text-muted-foreground">Colaboradores</span>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Notifications Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-4 md:p-5 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h2 className="font-display font-bold text-sm md:text-base text-card-foreground flex items-center gap-2">
               <Bell className="w-4 h-4" /> Notificações
