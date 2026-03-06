@@ -1,6 +1,6 @@
 export type PostType = 'image' | 'reels' | 'carousel' | 'story';
 export type Platform = 'instagram' | 'facebook' | 'both';
-export type KanbanStage = 'content' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled';
+export type KanbanStage = 'content' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled' | 'trash';
 
 export interface PostComment {
   id: string;
@@ -27,7 +27,6 @@ export interface Post {
   approvalLink?: string;
   comments: PostComment[];
   createdAt: string;
-  deletedAt?: string;
 }
 
 export interface Client {

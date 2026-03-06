@@ -27,7 +27,6 @@ interface DbPost {
   approval_link: string | null;
   comments: PostComment[];
   created_at: string;
-  deleted_at: string | null;
 }
 
 function dbClientToClient(c: DbClient): Client {
@@ -51,7 +50,6 @@ function dbPostToPost(p: DbPost): Post {
     approvalLink: p.approval_link || undefined,
     comments: (p.comments || []) as PostComment[],
     createdAt: p.created_at.split('T')[0],
-    deletedAt: p.deleted_at || undefined,
   };
 }
 
@@ -60,8 +58,8 @@ export function useAppData() {
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const posts = allPosts.filter(p => !p.deletedAt);
-  const trashedPosts = allPosts.filter(p => p.deletedAt);
+  const posts = allPosts.filter(p => p.stage !== 'trash');
+  const trashedPosts = allPosts.filter(p => p.stage === 'trash');
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -173,18 +171,18 @@ export function useAppData() {
   }, []);
 
   const deletePost = useCallback(async (postId: string) => {
-    // Soft delete
-    const now = new Date().toISOString();
-    const { error } = await supabase.from('posts').update({ deleted_at: now }).eq('id', postId);
+    // Soft delete (move to trash stage)
+    const { error } = await supabase.from('posts').update({ stage: 'trash' }).eq('id', postId);
     if (error) { toast.error('Erro ao excluir post'); return; }
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, deletedAt: now } : p));
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, stage: 'trash' } : p));
     toast.success('Post movido para a lixeira!');
   }, []);
 
   const restorePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from('posts').update({ deleted_at: null }).eq('id', postId);
+    // Restore to content stage or previous known stage? Best is to content stage.
+    const { error } = await supabase.from('posts').update({ stage: 'content' }).eq('id', postId);
     if (error) { toast.error('Erro ao restaurar post'); return; }
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, deletedAt: undefined } : p));
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, stage: 'content' } : p));
     toast.success('Post restaurado com sucesso!');
   }, []);
 
@@ -196,9 +194,9 @@ export function useAppData() {
   }, []);
 
   const emptyTrash = useCallback(async () => {
-    const { error } = await supabase.from('posts').delete().not('deleted_at', 'is', null);
+    const { error } = await supabase.from('posts').delete().eq('stage', 'trash');
     if (error) { toast.error('Erro ao esvaziar lixeira'); return; }
-    setAllPosts(prev => prev.filter(p => !p.deletedAt));
+    setAllPosts(prev => prev.filter(p => p.stage !== 'trash'));
     toast.success('Lixeira esvaziada!');
   }, []);
 
@@ -236,7 +234,7 @@ export function useAppData() {
   }, []);
 
   const getClientPosts = useCallback((clientId: string) => {
-    return allPosts.filter(p => p.clientId === clientId && !p.deletedAt);
+    return allPosts.filter(p => p.clientId === clientId && p.stage !== 'trash');
   }, [allPosts]);
 
   return { 

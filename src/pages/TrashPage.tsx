@@ -23,13 +23,6 @@ export default function TrashPage() {
     ? trashedPosts.filter(p => p.clientId === selectedClient) 
     : trashedPosts;
 
-  const getDaysLeft = (deletedAt: string) => {
-    const deletedDate = new Date(deletedAt);
-    const expireDate = new Date(deletedDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const daysLeft = Math.ceil((expireDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-    return Math.max(0, daysLeft);
-  };
-
   return (
     <div className="animate-slide-in max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
@@ -39,7 +32,7 @@ export default function TrashPage() {
             Lixeira
           </h1>
           <p className="text-sm md:text-base text-muted-foreground">
-            Itens excluídos. Eles serão mantidos aqui por até 30 dias.
+            Os itens recém-excluídos aparecerão aqui. Eles podem ser apagados permanentemente através desta tela.
           </p>
         </div>
         
@@ -109,7 +102,6 @@ export default function TrashPage() {
           <div className="grid grid-cols-1 divide-y divide-border">
             {filteredPosts.map(post => {
               const client = clients.find(c => c.id === post.clientId);
-              const daysLeft = post.deletedAt ? getDaysLeft(post.deletedAt) : 30;
               
               return (
                 <div key={post.id} className="p-4 md:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
@@ -124,12 +116,10 @@ export default function TrashPage() {
                       <p className="text-xs text-muted-foreground mb-1">
                         {client?.name} • Agendado: {formatDateBR(post.scheduledDate)}
                       </p>
-                      {post.deletedAt && (
-                        <p className={`text-[10px] md:text-xs font-semibold flex items-center gap-1 ${daysLeft <= 5 ? 'text-destructive' : 'text-warning'}`}>
-                          <AlertCircle className="w-3 h-3" />
-                          {daysLeft === 0 ? 'Expira hoje' : `Expira em ${daysLeft} dias (${formatDateBR(post.deletedAt)})`}
-                        </p>
-                      )}
+                      <p className={`text-[10px] md:text-xs font-semibold flex items-center gap-1 text-warning`}>
+                        <AlertCircle className="w-3 h-3" />
+                        Aguardando exclusão definitiva
+                      </p>
                     </div>
                   </div>
                   
