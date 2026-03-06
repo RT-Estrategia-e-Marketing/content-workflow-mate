@@ -35,22 +35,20 @@ const App = () => (
       <ThemeProvider>
         <Toaster />
         <Sonner />
-        <AppProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route element={<AuthGuard><AppLayout /></AuthGuard>}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/clients" element={<ClientsPage />} />
-                <Route path="/clients/:clientId" element={<ClientDetailPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Route>
-              <Route path="/approve/:token" element={<ApprovalPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AppProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AuthGuard><AppProvider><AppLayout /></AppProvider></AuthGuard>}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/clients/:clientId" element={<ClientDetailPage />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+            <Route path="/approve/:token" element={<AppProvider><ApprovalPage /></AppProvider>} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="*" element={<AppProvider><NotFound /></AppProvider>} />
+          </Routes>
+        </BrowserRouter>
       </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -60,6 +60,15 @@ export function useAppData() {
 
   // Fetch data
   const fetchData = useCallback(async () => {
+    // Only fetch if session exists
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setClients([]);
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
     const [{ data: cData }, { data: pData }] = await Promise.all([
       supabase.from('clients').select('*').order('created_at', { ascending: true }),
       supabase.from('posts').select('*').order('created_at', { ascending: true }),
@@ -70,6 +79,14 @@ export function useAppData() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Handle auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchData();
+    });
+    return () => { subscription.unsubscribe(); };
+  }, [fetchData]);
 
   // Realtime subscriptions
   useEffect(() => {
