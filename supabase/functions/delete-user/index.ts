@@ -48,9 +48,20 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Auto-approve with the specified role
+      // Try to find if role already exists from trigger
+      const { data: roleRow } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", newUser.user!.id).single();
+      
       const userRole = role || "member";
-      await supabaseAdmin.from("user_roles").update({ approved: true, role: userRole }).eq("user_id", newUser.user!.id);
+      if (roleRow) {
+        const { error: updateError } = await supabaseAdmin.from("user_roles")
+          .update({ approved: true, role: userRole })
+          .eq("id", roleRow.id);
+        if (updateError) console.error("Error updating role:", updateError);
+      } else {
+        const { error: insertError } = await supabaseAdmin.from("user_roles")
+          .insert({ user_id: newUser.user!.id, approved: true, role: userRole });
+        if (insertError) console.error("Error inserting role:", insertError);
+      }
 
       return new Response(JSON.stringify({ success: true, user_id: newUser.user!.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
