@@ -485,7 +485,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
           </DialogHeader>
           <div className="mt-2 space-y-5">
             <p className="text-sm text-muted-foreground">
-              Você está prestes a excluir o post <strong className="text-foreground">"{post.title}"</strong>. Esta ação não pode ser desfeita.
+              Você está prestes a excluir o post <strong className="text-foreground">"{post.title}"</strong>. Ele ficará na Lixeira e poderá ser restaurado em até 30 dias.
             </p>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
