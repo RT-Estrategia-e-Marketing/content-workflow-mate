@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle, Trash2, Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle, Trash2, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [newName, setNewName] = useState('');
   const [newJobTitle, setNewJobTitle] = useState('');
+  const [newRole, setNewRole] = useState<'admin' | 'member'>('member');
   const [loading, setLoading] = useState(false);
 
   // Delete user state
@@ -31,6 +32,29 @@ export default function SettingsPage() {
   const [deleteUserName, setDeleteUserName] = useState('');
   const [deleteUserConfirm, setDeleteUserConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Change password state
+  const [changePassOpen, setChangePassOpen] = useState(false);
+  const [changePassUserId, setChangePassUserId] = useState<string | null>(null);
+  const [changePassUserName, setChangePassUserName] = useState('');
+  const [changePassValue, setChangePassValue] = useState('');
+  const [changePassConfirm, setChangePassConfirm] = useState('');
+  const [showChangePass, setShowChangePass] = useState(false);
+  const [changingPass, setChangingPass] = useState(false);
+
+  // Realtime subscription for roles and profiles
+  useEffect(() => {
+    const channel = supabase
+      .channel('settings-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        refetchRoles();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        refetch();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [refetchRoles, refetch]);
 
   const handleAddMember = async () => {
     if (!newEmail.trim() || !newPassword.trim() || !newName.trim()) return;
@@ -44,42 +68,36 @@ export default function SettingsPage() {
     }
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email: newEmail.trim(),
-      password: newPassword,
-      options: {
-        data: { full_name: newName.trim() },
-        emailRedirectTo: window.location.origin,
-      },
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          action: 'create-user',
+          email: newEmail.trim(),
+          password: newPassword,
+          full_name: newName.trim(),
+          role: newRole,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      // Auto-approve the user created by admin
       toast.success(`Usuário ${newName.trim()} criado com sucesso!`);
-      setNewEmail(''); setNewPassword(''); setNewPasswordConfirm(''); setNewName(''); setNewJobTitle('');
-      // Wait for triggers to create role, then approve
+      setNewEmail(''); setNewPassword(''); setNewPasswordConfirm(''); setNewName(''); setNewJobTitle(''); setNewRole('member');
+
+      // Update job title if provided
       setTimeout(async () => {
         refetch();
         refetchRoles();
-        // Find and approve the newly created user
-        const { data: newRoles } = await supabase.from('user_roles').select('*').order('created_at', { ascending: false }).limit(5);
-        if (newRoles) {
-          const pending = newRoles.find((r: any) => !r.approved);
-          if (pending) {
-            await approveUser(pending.user_id, 'member');
-            if (newJobTitle.trim()) {
-              const { data: newProfiles } = await supabase.from('profiles').select('*').eq('user_id', pending.user_id).limit(1);
-              if (newProfiles && newProfiles.length > 0) {
-                await supabase.from('profiles').update({ job_title: newJobTitle.trim() } as any).eq('id', newProfiles[0].id);
-              }
-            }
+        if (newJobTitle.trim() && data?.user_id) {
+          const { data: newProfiles } = await supabase.from('profiles').select('*').eq('user_id', data.user_id).limit(1);
+          if (newProfiles && newProfiles.length > 0) {
+            await supabase.from('profiles').update({ job_title: newJobTitle.trim() } as any).eq('id', newProfiles[0].id);
             refetch();
-            refetchRoles();
           }
         }
-      }, 1500);
+      }, 1000);
+    } catch (err: any) {
+      toast.error('Erro ao criar usuário: ' + (err.message || ''));
     }
     setLoading(false);
   };
@@ -91,12 +109,11 @@ export default function SettingsPage() {
   };
 
   const handleApprove = async (userId: string, role: string) => {
-    await approveUser(userId, role as 'admin' | 'manager' | 'member');
+    await approveUser(userId, role as 'admin' | 'member');
     toast.success('Usuário aprovado!');
   };
 
   const handleReject = async (userId: string) => {
-    // Reject = delete from auth entirely
     setDeleting(true);
     try {
       const { data, error } = await supabase.functions.invoke('delete-user', {
@@ -135,6 +152,40 @@ export default function SettingsPage() {
     setDeleteUserName(name);
     setDeleteUserConfirm('');
     setDeleteUserOpen(true);
+  };
+
+  const openChangePassword = (userId: string, name: string) => {
+    setChangePassUserId(userId);
+    setChangePassUserName(name);
+    setChangePassValue('');
+    setChangePassConfirm('');
+    setShowChangePass(false);
+    setChangePassOpen(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!changePassUserId || !changePassValue.trim()) return;
+    if (changePassValue !== changePassConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    if (changePassValue.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    setChangingPass(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { action: 'change-password', user_id: changePassUserId, password: changePassValue },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Senha de ${changePassUserName} alterada!`);
+      setChangePassOpen(false);
+    } catch (err: any) {
+      toast.error('Erro ao alterar senha: ' + (err.message || ''));
+    }
+    setChangingPass(false);
   };
 
   const pendingRoles = allRoles.filter(r => !r.approved);
@@ -181,32 +232,14 @@ export default function SettingsPage() {
             {pendingRoles.map(role => {
               const profile = profiles.find(p => p.user_id === role.user_id);
               return (
-                <div key={role.id} className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{profile?.full_name || 'Novo usuário'}</p>
-                      <p className="text-xs text-muted-foreground">{role.user_id.substring(0, 8)}...</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Select defaultValue="member" onValueChange={(v) => handleApprove(role.user_id, v)}>
-                        <SelectTrigger className="w-28 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Gerente</SelectItem>
-                          <SelectItem value="member">Membro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="outline" onClick={() => handleApprove(role.user_id, 'member')} className="h-8">
-                        <CheckCircle className="w-3 h-3 mr-1" /> Aprovar
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleReject(role.user_id)} className="h-8" disabled={deleting}>
-                        <XCircle className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <PendingUserCard
+                  key={role.id}
+                  role={role}
+                  profileName={profile?.full_name || 'Novo usuário'}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  deleting={deleting}
+                />
               );
             })}
           </div>
@@ -234,31 +267,41 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {isAdmin && role && (
-                      <Select value={role.role} onValueChange={(v) => approveUser(m.user_id, v as any)}>
-                        <SelectTrigger className="w-28 h-8 text-xs">
+                      <Select value={role.role === 'manager' ? 'member' : role.role} onValueChange={(v) => approveUser(m.user_id, v as any)}>
+                        <SelectTrigger className="w-24 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Gerente</SelectItem>
                           <SelectItem value="member">Membro</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
                     {!isAdmin && role && (
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium capitalize">
-                        {role.role}
+                        {role.role === 'manager' ? 'Membro' : role.role === 'admin' ? 'Admin' : 'Membro'}
                       </span>
                     )}
                     {isAdmin && !isMe && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeleteUser(m.user_id, m.full_name)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openChangePassword(m.user_id, m.full_name)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          title="Alterar senha"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteUser(m.user_id, m.full_name)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -302,13 +345,31 @@ export default function SettingsPage() {
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <Input
-                type={showNewPassword ? 'text' : 'password'}
-                placeholder="Confirmar senha"
-                value={newPasswordConfirm}
-                onChange={e => setNewPasswordConfirm(e.target.value)}
-                minLength={6}
-              />
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="Confirmar senha"
+                  value={newPasswordConfirm}
+                  onChange={e => setNewPasswordConfirm(e.target.value)}
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Select value={newRole} onValueChange={(v) => setNewRole(v as 'admin' | 'member')}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Tipo de acesso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Membro</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
               <Button onClick={handleAddMember} className="w-full" disabled={loading}>
                 {loading ? 'Adicionando...' : 'Adicionar'}
               </Button>
@@ -323,12 +384,12 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle className="font-display text-destructive">Excluir Usuário</DialogTitle>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <div className="mt-2 space-y-5">
             <p className="text-sm text-muted-foreground">
               Você está prestes a excluir <strong className="text-foreground">{deleteUserName}</strong> permanentemente. Esta ação não pode ser desfeita.
             </p>
             <div>
-              <label className="text-xs text-muted-foreground font-medium mb-2 block">
+              <label className="text-xs text-muted-foreground font-medium mb-3 block">
                 Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
               </label>
               <Input
@@ -352,6 +413,97 @@ export default function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={changePassOpen} onOpenChange={setChangePassOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Alterar Senha</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Alterar a senha de <strong className="text-foreground">{changePassUserName}</strong>
+            </p>
+            <div className="relative">
+              <Input
+                type={showChangePass ? 'text' : 'password'}
+                placeholder="Nova senha (mín. 6 caracteres)"
+                value={changePassValue}
+                onChange={e => setChangePassValue(e.target.value)}
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowChangePass(!showChangePass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showChangePass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="relative">
+              <Input
+                type={showChangePass ? 'text' : 'password'}
+                placeholder="Confirmar nova senha"
+                value={changePassConfirm}
+                onChange={e => setChangePassConfirm(e.target.value)}
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowChangePass(!showChangePass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showChangePass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setChangePassOpen(false)} className="flex-1">Cancelar</Button>
+              <Button onClick={handleChangePassword} disabled={changingPass || !changePassValue.trim()} className="flex-1">
+                {changingPass ? 'Alterando...' : 'Alterar Senha'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Pending user card with its own role state
+function PendingUserCard({ role, profileName, onApprove, onReject, deleting }: {
+  role: { id: string; user_id: string; role: string };
+  profileName: string;
+  onApprove: (userId: string, role: string) => void;
+  onReject: (userId: string) => void;
+  deleting: boolean;
+}) {
+  const [selectedRole, setSelectedRole] = useState<string>('member');
+
+  return (
+    <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <p className="text-sm font-medium text-foreground">{profileName}</p>
+          <p className="text-xs text-muted-foreground">{role.user_id.substring(0, 8)}...</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={selectedRole} onValueChange={setSelectedRole}>
+            <SelectTrigger className="w-24 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="member">Membro</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" onClick={() => onApprove(role.user_id, selectedRole)} className="h-8">
+            <CheckCircle className="w-3 h-3 mr-1" /> Aprovar
+          </Button>
+          <Button size="sm" variant="destructive" onClick={() => onReject(role.user_id)} className="h-8" disabled={deleting}>
+            <XCircle className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

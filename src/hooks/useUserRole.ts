@@ -37,6 +37,18 @@ export function useUserRole() {
     fetchAllRoles();
   }, [fetchRole, fetchAllRoles]);
 
+  // Realtime subscription for user_roles changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('user-roles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        fetchRole();
+        fetchAllRoles();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchRole, fetchAllRoles]);
+
   const isAdmin = userRole?.role === 'admin' && userRole?.approved;
   const isApproved = userRole?.approved ?? false;
 

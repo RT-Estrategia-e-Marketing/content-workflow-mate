@@ -28,17 +28,56 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { user_id } = await req.json();
+    const body = await req.json();
+    const { action, user_id, email, password, full_name, role } = body;
+
+    // CREATE USER (without affecting admin session)
+    if (action === "create-user") {
+      if (!email || !password || !full_name) {
+        return new Response(JSON.stringify({ error: "email, password, full_name required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name },
+      });
+
+      if (createError) {
+        return new Response(JSON.stringify({ error: createError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Auto-approve with the specified role
+      const userRole = role || "member";
+      await supabaseAdmin.from("user_roles").update({ approved: true, role: userRole }).eq("user_id", newUser.user!.id);
+
+      return new Response(JSON.stringify({ success: true, user_id: newUser.user!.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // CHANGE PASSWORD
+    if (action === "change-password") {
+      if (!user_id || !password) {
+        return new Response(JSON.stringify({ error: "user_id, password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password });
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // DELETE USER (default action for backward compat)
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Delete profile, role, notifications first
     await supabaseAdmin.from("notifications").delete().eq("user_id", user_id);
     await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
     await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
 
-    // Delete from auth
     const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id);
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
