@@ -28,7 +28,6 @@ export default function TrashPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-            <Trash2 className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
             Lixeira
           </h1>
           <p className="text-sm md:text-base text-muted-foreground">
@@ -93,7 +92,7 @@ export default function TrashPage() {
             <Trash2 className="w-8 h-8 text-primary" />
           </div>
           <h2 className="text-xl font-display font-bold text-card-foreground mb-2">Lixeira vazia</h2>
-          <p className="text-muted-foreground max-w-md mx-auto">
+          <p className="text-muted-foreground mx-auto">
             Nenhum post foi excluído. Os posts excluídos aparecerão aqui.
           </p>
         </div>

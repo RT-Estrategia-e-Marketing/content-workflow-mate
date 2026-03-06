@@ -74,7 +74,6 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [delegateTo, setDelegateTo] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
@@ -229,7 +228,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                   </Button>
                 )}
                 {!editing && (
-                  <Button variant="ghost" size="sm" onClick={() => { setDeleteConfirm(''); setDeleteOpen(true); }} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
