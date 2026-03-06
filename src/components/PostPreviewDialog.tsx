@@ -2,6 +2,7 @@ import { Post, KANBAN_STAGES, PostType, Platform, PostComment } from '@/lib/type
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,9 +53,10 @@ interface PostPreviewDialogProps {
 }
 
 export default function PostPreviewDialog({ post, open, onOpenChange }: PostPreviewDialogProps) {
-  const { movePost, assignPost, updatePost } = useApp();
+  const { movePost, assignPost, updatePost, deletePost } = useApp();
   const { user } = useAuth();
   const { profiles } = useProfiles();
+  const { isAdmin } = useUserRole();
   const { createNotification } = useNotifications();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(post.title);
@@ -70,6 +72,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
   const [commentText, setCommentText] = useState('');
   const [delegateTo, setDelegateTo] = useState('');
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
@@ -121,6 +126,23 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
     setCommentText('');
     setDelegateTo('');
+  };
+
+  const handleAssign = (memberId: string) => {
+    const myProfile = profiles.find(p => p.user_id === user?.id);
+    const assignedProfile = profiles.find(p => p.user_id === memberId);
+    assignPost(post.id, memberId);
+
+    // Send notification to the assigned user
+    if (memberId !== user?.id) {
+      createNotification({
+        user_id: memberId,
+        post_id: post.id,
+        client_id: post.clientId,
+        type: 'delegation',
+        message: `${myProfile?.full_name || 'Alguém'} atribuiu o post "${post.title}" para você`,
+      });
+    }
   };
 
   // Carousel reorder
@@ -175,6 +197,13 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     toast.success('Post atualizado!');
   };
 
+  const handleDeletePost = () => {
+    if (deleteConfirm !== 'EXCLUIR') return;
+    deletePost(post.id);
+    setDeleteOpen(false);
+    onOpenChange(false);
+  };
+
   const resetEdit = () => {
     setTitle(post.title);
     setCaption(post.caption);
@@ -188,206 +217,113 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) resetEdit(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="font-display">{editing ? 'Editar Post' : post.title}</DialogTitle>
-            {!editing && (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-                <Edit2 className="w-4 h-4 mr-1" /> Editar
-              </Button>
-            )}
-          </div>
-        </DialogHeader>
-
-        {editing ? (
-          <div className="space-y-4 mt-2">
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" maxLength={100} />
-            {type !== 'story' && (
-              <Textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Legenda..." rows={4} maxLength={2200} />
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <Select value={type} onValueChange={(v) => setType(v as PostType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="image">Imagem</SelectItem>
-                  <SelectItem value="reels">Reels</SelectItem>
-                  <SelectItem value="carousel">Carrossel</SelectItem>
-                  <SelectItem value="story">Story</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="instagram">Instagram</SelectItem>
-                  <SelectItem value="facebook">Facebook</SelectItem>
-                  <SelectItem value="both">Ambos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {(type === 'image') && (
-              <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem do post" preview={mainImage} />
-            )}
-
-            {type === 'reels' && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
-                <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da capa" preview={mainImage} />
-                <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
-                <FileUpload bucket="post-media" onUpload={setVideoUrl} label="Upload do vídeo" preview={videoUrl} accept="video/*" />
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetEdit(); onOpenChange(v); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="font-display">{editing ? 'Editar Post' : post.title}</DialogTitle>
+              <div className="flex items-center gap-1">
+                {!editing && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+                    <Edit2 className="w-4 h-4 mr-1" /> Editar
+                  </Button>
+                )}
+                {!editing && (
+                  <Button variant="ghost" size="sm" onClick={() => { setDeleteConfirm(''); setDeleteOpen(true); }} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
+          </DialogHeader>
 
-            {(type === 'carousel' || type === 'story') && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
-                <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
-                <div className="grid grid-cols-3 gap-2">
-                  {carouselImages.map((img, i) => (
-                    <div
-                      key={i}
-                      draggable
-                      onDragStart={(e) => handleCarouselDragStart(e, i)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleCarouselDrop(e, i)}
-                      className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}
-                    >
-                      {img ? (
-                        <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" />
-                      ) : (
-                        <div className="w-full aspect-square bg-muted flex items-center justify-center">
-                          <Upload className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
-                        <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
-                        <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                      <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
-                    </div>
-                  ))}
+          {editing ? (
+            <div className="space-y-4 mt-2">
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" maxLength={100} />
+              {type !== 'story' && (
+                <Textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Legenda..." rows={4} maxLength={2200} />
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={type} onValueChange={(v) => setType(v as PostType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="reels">Reels</SelectItem>
+                    <SelectItem value="carousel">Carrossel</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(type === 'image') && (
+                <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem do post" preview={mainImage} />
+              )}
+
+              {type === 'reels' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da capa" preview={mainImage} />
+                  <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setVideoUrl} label="Upload do vídeo" preview={videoUrl} accept="video/*" />
                 </div>
-                <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
-                  <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
-                </Button>
-              </div>
-            )}
+              )}
 
-            <DatePicker value={date} onChange={setDate} />
-
-            <div>
-              <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-              <Select value={post.assignedTo || ''} onValueChange={(val) => assignPost(post.id, val)}>
-                <SelectTrigger className="h-9 text-sm">
-                  <div className="flex items-center gap-1">
-                    <UserPlus className="w-3 h-3" />
-                    <SelectValue placeholder="Delegar" />
+              {(type === 'carousel' || type === 'story') && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
+                  <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
+                  <div className="grid grid-cols-3 gap-2">
+                    {carouselImages.map((img, i) => (
+                      <div
+                        key={i}
+                        draggable
+                        onDragStart={(e) => handleCarouselDragStart(e, i)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleCarouselDrop(e, i)}
+                        className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}
+                      >
+                        {img ? (
+                          <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" />
+                        ) : (
+                          <div className="w-full aspect-square bg-muted flex items-center justify-center">
+                            <Upload className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
+                          <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
+                          <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                        <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
+                      </div>
+                    ))}
                   </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map(m => (
-                    <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                      {m.full_name} · {m.job_title || m.priority}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
+                  </Button>
+                </div>
+              )}
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={resetEdit} className="flex-1">Cancelar</Button>
-              <Button onClick={handleSave} className="flex-1">Salvar</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 mt-2">
-            {/* Stage badge */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-xs px-2 py-1 rounded-full bg-muted border border-border font-medium`}>
-                {currentStage?.label}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                {post.type === 'reels' && <><Film className="w-3 h-3" /> Reels</>}
-                {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel</>}
-                {post.type === 'story' && <><Smartphone className="w-3 h-3" /> Story</>}
-                {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
-              </span>
-              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-                {(post.platform === 'instagram' || post.platform === 'both') && <Instagram className="w-3 h-3" />}
-                {(post.platform === 'facebook' || post.platform === 'both') && <Facebook className="w-3 h-3" />}
-              </span>
-            </div>
+              <DatePicker value={date} onChange={setDate} />
 
-            {/* Preview content */}
-            {(post.type === 'carousel' || post.type === 'story') && post.images && post.images.length > 0 ? (
-              <PreviewCarousel images={post.images.filter(Boolean)} />
-            ) : post.imageUrl ? (
-              <img src={post.imageUrl} alt={post.title} className="w-full rounded-lg object-contain border border-border" />
-            ) : (
-              <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
-                <span className="text-muted-foreground text-sm">Sem mídia</span>
-              </div>
-            )}
-
-            {post.type === 'reels' && post.videoUrl && (
-              <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />
-            )}
-
-            {post.type !== 'story' && (
-              <div className="p-3 bg-secondary rounded-lg">
-                <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>
-                <p className="text-sm text-secondary-foreground whitespace-pre-wrap">{post.caption}</p>
-              </div>
-            )}
-
-            <p className="text-xs text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</p>
-            {assigned && <p className="text-xs text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>}
-
-            {post.stage === 'client_approval' && post.approvalLink && (
-              <button onClick={handleCopyLink} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                <Link2 className="w-3 h-3" /> Copiar link de aprovação
-              </button>
-            )}
-
-            {/* Comments / Change Requests */}
-            {post.comments.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3" /> Solicitações de alteração
-                </p>
-                {post.comments.map(c => {
-                  const delegated = c.delegatedTo ? profiles.find(p => p.user_id === c.delegatedTo) : null;
-                  return (
-                    <div key={c.id} className="p-2 bg-muted rounded-lg text-xs">
-                      <p className="font-medium text-foreground">{c.author}</p>
-                      <p className="text-muted-foreground mt-0.5">{c.text}</p>
-                      {delegated && (
-                        <p className="text-[10px] text-primary mt-1">→ Delegado para {delegated.full_name}</p>
-                      )}
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
+                <Select value={post.assignedTo || ''} onValueChange={handleAssign}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <div className="flex items-center gap-1">
+                      <UserPlus className="w-3 h-3" />
+                      <SelectValue placeholder="Delegar" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Add comment for internal approval */}
-            {(post.stage === 'internal_approval' || post.stage === 'adjustments') && (
-              <div className="space-y-2 border-t border-border pt-3">
-                <p className="text-xs font-semibold text-foreground">Solicitar alteração</p>
-                <Textarea
-                  placeholder="Descreva a alteração necessária..."
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  rows={2}
-                  className="text-xs"
-                />
-                <Select value={delegateTo} onValueChange={setDelegateTo}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Delegar para..." />
                   </SelectTrigger>
                   <SelectContent>
                     {profiles.map(m => (
@@ -397,28 +333,176 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                     ))}
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={handleAddComment} disabled={!commentText.trim()} className="w-full">
-                  <Send className="w-3 h-3 mr-1" /> Enviar
-                </Button>
               </div>
-            )}
 
-            {/* Stage controls */}
-            <div className="flex gap-2 pt-2 border-t border-border">
-              {canMoveBack && (
-                <Button variant="outline" size="sm" onClick={handleMoveBack} className="flex-1">
-                  <ArrowLeft className="w-3 h-3 mr-1" /> Voltar
-                </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={resetEdit} className="flex-1">Cancelar</Button>
+                <Button onClick={handleSave} className="flex-1">Salvar</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 mt-2">
+              {/* Stage badge */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-xs px-2 py-1 rounded-full bg-muted border border-border font-medium`}>
+                  {currentStage?.label}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  {post.type === 'reels' && <><Film className="w-3 h-3" /> Reels</>}
+                  {post.type === 'carousel' && <><Images className="w-3 h-3" /> Carrossel</>}
+                  {post.type === 'story' && <><Smartphone className="w-3 h-3" /> Story</>}
+                  {post.type === 'image' && <><Image className="w-3 h-3" /> Imagem</>}
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                  {(post.platform === 'instagram' || post.platform === 'both') && <Instagram className="w-3 h-3" />}
+                  {(post.platform === 'facebook' || post.platform === 'both') && <Facebook className="w-3 h-3" />}
+                </span>
+              </div>
+
+              {/* Preview content */}
+              {(post.type === 'carousel' || post.type === 'story') && post.images && post.images.length > 0 ? (
+                <PreviewCarousel images={post.images.filter(Boolean)} />
+              ) : post.imageUrl ? (
+                <img src={post.imageUrl} alt={post.title} className="w-full rounded-lg object-contain border border-border" />
+              ) : (
+                <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
+                  <span className="text-muted-foreground text-sm">Sem mídia</span>
+                </div>
               )}
-              {canMoveForward && (
-                <Button size="sm" onClick={handleMoveForward} className="flex-1">
-                  Avançar <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
+
+              {post.type === 'reels' && post.videoUrl && (
+                <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />
               )}
+
+              {post.type !== 'story' && (
+                <div className="p-3 bg-secondary rounded-lg">
+                  <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>
+                  <p className="text-sm text-secondary-foreground whitespace-pre-wrap">{post.caption}</p>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</p>
+              {assigned && <p className="text-xs text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>}
+
+              {post.stage === 'client_approval' && post.approvalLink && (
+                <button onClick={handleCopyLink} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                  <Link2 className="w-3 h-3" /> Copiar link de aprovação
+                </button>
+              )}
+
+              {/* Assign */}
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
+                <Select value={post.assignedTo || ''} onValueChange={handleAssign}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <div className="flex items-center gap-1">
+                      <UserPlus className="w-3 h-3" />
+                      <SelectValue placeholder="Delegar" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(m => (
+                      <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
+                        {m.full_name} · {m.job_title || m.priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Comments / Change Requests */}
+              {post.comments.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" /> Solicitações de alteração
+                  </p>
+                  {post.comments.map(c => {
+                    const delegated = c.delegatedTo ? profiles.find(p => p.user_id === c.delegatedTo) : null;
+                    return (
+                      <div key={c.id} className="p-2 bg-muted rounded-lg text-xs">
+                        <p className="font-medium text-foreground">{c.author}</p>
+                        <p className="text-muted-foreground mt-0.5">{c.text}</p>
+                        {delegated && (
+                          <p className="text-[10px] text-primary mt-1">→ Delegado para {delegated.full_name}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add comment for internal approval */}
+              {(post.stage === 'internal_approval' || post.stage === 'adjustments') && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <p className="text-xs font-semibold text-foreground">Solicitar alteração</p>
+                  <Textarea
+                    placeholder="Descreva a alteração necessária..."
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    rows={2}
+                    className="text-xs"
+                  />
+                  <Select value={delegateTo} onValueChange={setDelegateTo}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Delegar para..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles.map(m => (
+                        <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
+                          {m.full_name} · {m.job_title || m.priority}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleAddComment} disabled={!commentText.trim()} className="w-full">
+                    <Send className="w-3 h-3 mr-1" /> Enviar
+                  </Button>
+                </div>
+              )}
+
+              {/* Stage controls */}
+              <div className="flex gap-2 pt-2 border-t border-border">
+                {canMoveBack && (
+                  <Button variant="outline" size="sm" onClick={handleMoveBack} className="flex-1">
+                    <ArrowLeft className="w-3 h-3 mr-1" /> Voltar
+                  </Button>
+                )}
+                {canMoveForward && (
+                  <Button size="sm" onClick={handleMoveForward} className="flex-1">
+                    Avançar <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Post Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Excluir Post</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Você está prestes a excluir o post <strong className="text-foreground">"{post.title}"</strong>. Esta ação não pode ser desfeita.
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium mb-3 block">
+                Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
+              </label>
+              <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="EXCLUIR" className="font-mono" />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
+              <Button variant="destructive" onClick={handleDeletePost} disabled={deleteConfirm !== 'EXCLUIR'} className="flex-1">
+                Excluir Post
+              </Button>
             </div>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

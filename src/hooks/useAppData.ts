@@ -103,6 +103,8 @@ export function useAppData() {
   }, []);
 
   const deleteClient = useCallback(async (clientId: string) => {
+    // Delete posts first
+    await supabase.from('posts').delete().eq('client_id', clientId);
     const { error } = await supabase.from('clients').delete().eq('id', clientId);
     if (error) { toast.error('Erro ao excluir cliente'); return; }
     setClients(prev => prev.filter(c => c.id !== clientId));
@@ -148,6 +150,13 @@ export function useAppData() {
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
   }, []);
 
+  const deletePost = useCallback(async (postId: string) => {
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) { toast.error('Erro ao excluir post'); return; }
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    toast.success('Post excluído!');
+  }, []);
+
   const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
@@ -185,5 +194,5 @@ export function useAppData() {
     return posts.filter(p => p.clientId === clientId);
   }, [posts]);
 
-  return { clients, posts, loading, addClient, updateClient, deleteClient, addPost, updatePost, movePost, assignPost, getClientPosts };
+  return { clients, posts, loading, addClient, updateClient, deleteClient, addPost, updatePost, deletePost, movePost, assignPost, getClientPosts };
 }

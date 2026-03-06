@@ -138,90 +138,89 @@ export default function ClientDetailPage() {
             </>
           )}
         </div>
-        {isAdmin && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="md:h-10 md:px-4">
-                <Plus className="w-4 h-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Novo Post</span>
-                <span className="sm:hidden">Novo</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-display">Criar Post</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
-                {type !== 'story' && (
-                  <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <Select value={type} onValueChange={(v) => { setType(v as PostType); setMainImage(''); setCarouselImages([]); setReelsCover(''); setReelsVideo(''); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="image">Imagem</SelectItem>
-                      <SelectItem value="reels">Reels</SelectItem>
-                      <SelectItem value="carousel">Carrossel</SelectItem>
-                      <SelectItem value="story">Story</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="both">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {type === 'image' && (
-                  <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
-                )}
-                {type === 'reels' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
-                    <FileUpload bucket="post-media" onUpload={setReelsCover} label="Upload da capa" preview={reelsCover} />
-                    <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
-                    <FileUpload bucket="post-media" onUpload={setReelsVideo} label="Upload do vídeo" preview={reelsVideo} accept="video/*" />
-                  </div>
-                )}
-                {(type === 'carousel' || type === 'story') && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
-                    <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
-                    <div className="grid grid-cols-3 gap-2">
-                      {carouselImages.map((img, i) => (
-                        <div key={i} draggable onDragStart={(e) => handleCarouselDragStart(e, i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleCarouselDrop(e, i)} className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}>
-                          {img ? <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" /> : <div className="w-full aspect-square bg-muted flex items-center justify-center"><Upload className="w-4 h-4 text-muted-foreground" /></div>}
-                          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
-                            <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
-                            <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
-                          </div>
-                          <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
-                        </div>
-                      ))}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
-                      <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
-                    </Button>
-                  </div>
-                )}
-                <DatePicker value={date} onChange={setDate} />
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-                  <Select value={assignedTo} onValueChange={setAssignedTo}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
-                    <SelectContent>
-                      {profiles.map(m => <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.full_name} · {m.job_title || m.priority}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAdd} className="w-full">Criar Post</Button>
+        {/* All approved users can create posts */}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="md:h-10 md:px-4">
+              <Plus className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Novo Post</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-display">Criar Post</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
+              {type !== 'story' && (
+                <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={type} onValueChange={(v) => { setType(v as PostType); setMainImage(''); setCarouselImages([]); setReelsCover(''); setReelsVideo(''); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image">Imagem</SelectItem>
+                    <SelectItem value="reels">Reels</SelectItem>
+                    <SelectItem value="carousel">Carrossel</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              {type === 'image' && (
+                <FileUpload bucket="post-media" onUpload={setMainImage} label="Upload da imagem do post" preview={mainImage} />
+              )}
+              {type === 'reels' && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Capa do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setReelsCover} label="Upload da capa" preview={reelsCover} />
+                  <p className="text-xs text-muted-foreground font-medium">Vídeo do Reels</p>
+                  <FileUpload bucket="post-media" onUpload={setReelsVideo} label="Upload do vídeo" preview={reelsVideo} accept="video/*" />
+                </div>
+              )}
+              {(type === 'carousel' || type === 'story') && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">{type === 'story' ? 'Cards do Story' : 'Imagens do Carrossel'}</p>
+                  <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
+                  <div className="grid grid-cols-3 gap-2">
+                    {carouselImages.map((img, i) => (
+                      <div key={i} draggable onDragStart={(e) => handleCarouselDragStart(e, i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleCarouselDrop(e, i)} className={`relative group rounded-lg border-2 ${dragIdx === i ? 'border-primary opacity-50' : 'border-border'} overflow-hidden cursor-grab active:cursor-grabbing`}>
+                        {img ? <img src={img} alt={`Slide ${i + 1}`} className="w-full aspect-square object-cover" /> : <div className="w-full aspect-square bg-muted flex items-center justify-center"><Upload className="w-4 h-4 text-muted-foreground" /></div>}
+                        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-1">
+                          <span className="bg-foreground/70 text-background text-[9px] rounded px-1">{i + 1}</span>
+                          <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
+                        </div>
+                        <GripVertical className="absolute bottom-1 right-1 w-3 h-3 text-foreground/40" />
+                      </div>
+                    ))}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => multiFileRef.current?.click()} className="w-full text-xs">
+                    <Upload className="w-3 h-3 mr-1" /> Adicionar Slides
+                  </Button>
+                </div>
+              )}
+              <DatePicker value={date} onChange={setDate} />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
+                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(m => <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.full_name} · {m.job_title || m.priority}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleAdd} className="w-full">Criar Post</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Edit Client Dialog */}
@@ -242,12 +241,12 @@ export default function ClientDetailPage() {
           <DialogHeader>
             <DialogTitle className="font-display text-destructive">Excluir Cliente</DialogTitle>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <div className="mt-2 space-y-5">
             <p className="text-sm text-muted-foreground">
               Você está prestes a excluir <strong className="text-foreground">{client.name}</strong> e todos os seus posts. Esta ação não pode ser desfeita.
             </p>
             <div>
-              <label className="text-xs text-muted-foreground font-medium mb-2 block">
+              <label className="text-xs text-muted-foreground font-medium mb-3 block">
                 Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar
               </label>
               <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="EXCLUIR" className="font-mono" />
