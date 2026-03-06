@@ -17,6 +17,7 @@ import ApprovalPage from "@/pages/ApprovalPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
+import TrashPage from '@/pages/TrashPage';
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
                 <Route path="/clients/:clientId" element={<ClientDetailPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/trash" element={<TrashPage />} />
               </Route>
               <Route path="/approve/:token" element={<ApprovalPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />

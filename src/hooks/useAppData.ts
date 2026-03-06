@@ -27,6 +27,7 @@ interface DbPost {
   approval_link: string | null;
   comments: PostComment[];
   created_at: string;
+  deleted_at: string | null;
 }
 
 function dbClientToClient(c: DbClient): Client {
@@ -50,13 +51,17 @@ function dbPostToPost(p: DbPost): Post {
     approvalLink: p.approval_link || undefined,
     comments: (p.comments || []) as PostComment[],
     createdAt: p.created_at.split('T')[0],
+    deletedAt: p.deleted_at || undefined,
   };
 }
 
 export function useAppData() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const posts = allPosts.filter(p => !p.deletedAt);
+  const trashedPosts = allPosts.filter(p => p.deletedAt);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -64,7 +69,7 @@ export function useAppData() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       setClients([]);
-      setPosts([]);
+      setAllPosts([]);
       setLoading(false);
       return;
     }
@@ -74,7 +79,7 @@ export function useAppData() {
       supabase.from('posts').select('*').order('created_at', { ascending: true }),
     ]);
     if (cData) setClients((cData as unknown as DbClient[]).map(dbClientToClient));
-    if (pData) setPosts((pData as unknown as DbPost[]).map(dbPostToPost));
+    if (pData) setAllPosts((pData as unknown as DbPost[]).map(dbPostToPost));
     setLoading(false);
   }, []);
 
@@ -125,7 +130,7 @@ export function useAppData() {
     const { error } = await supabase.from('clients').delete().eq('id', clientId);
     if (error) { toast.error('Erro ao excluir cliente'); return; }
     setClients(prev => prev.filter(c => c.id !== clientId));
-    setPosts(prev => prev.filter(p => p.clientId !== clientId));
+    setAllPosts(prev => prev.filter(p => p.clientId !== clientId));
     toast.success('Cliente excluído!');
   }, []);
 
@@ -145,7 +150,7 @@ export function useAppData() {
     }).select().single();
     if (error) { toast.error('Erro ao criar post'); return null; }
     const newPost = dbPostToPost(data as unknown as DbPost);
-    setPosts(prev => [...prev, newPost]);
+    setAllPosts(prev => [...prev, newPost]);
     return newPost;
   }, []);
 
@@ -164,14 +169,37 @@ export function useAppData() {
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
     if (data.comments !== undefined) update.comments = data.comments;
     await supabase.from('posts').update(update).eq('id', postId);
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
   }, []);
 
   const deletePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    // Soft delete
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('posts').update({ deleted_at: now }).eq('id', postId);
     if (error) { toast.error('Erro ao excluir post'); return; }
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success('Post excluído!');
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, deletedAt: now } : p));
+    toast.success('Post movido para a lixeira!');
+  }, []);
+
+  const restorePost = useCallback(async (postId: string) => {
+    const { error } = await supabase.from('posts').update({ deleted_at: null }).eq('id', postId);
+    if (error) { toast.error('Erro ao restaurar post'); return; }
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, deletedAt: undefined } : p));
+    toast.success('Post restaurado com sucesso!');
+  }, []);
+
+  const hardDeletePost = useCallback(async (postId: string) => {
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) { toast.error('Erro ao excluir post definitivamente'); return; }
+    setAllPosts(prev => prev.filter(p => p.id !== postId));
+    toast.success('Post excluído definitivamente!');
+  }, []);
+
+  const emptyTrash = useCallback(async () => {
+    const { error } = await supabase.from('posts').delete().not('deleted_at', 'is', null);
+    if (error) { toast.error('Erro ao esvaziar lixeira'); return; }
+    setAllPosts(prev => prev.filter(p => !p.deletedAt));
+    toast.success('Lixeira esvaziada!');
   }, []);
 
   const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
@@ -196,20 +224,24 @@ export function useAppData() {
     }
 
     await supabase.from('posts').update(update).eq('id', postId);
-    setPosts(prev => prev.map(p => {
+    setAllPosts(prev => prev.map(p => {
       if (p.id !== postId) return p;
       return { ...p, stage: newStage, approvalLink: (update.approval_link as string) || p.approvalLink };
     }));
-  }, [posts]);
+  }, [allPosts]);
 
   const assignPost = useCallback(async (postId: string, memberId: string) => {
     await supabase.from('posts').update({ assigned_to: memberId }).eq('id', postId);
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, assignedTo: memberId } : p));
+    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, assignedTo: memberId } : p));
   }, []);
 
   const getClientPosts = useCallback((clientId: string) => {
-    return posts.filter(p => p.clientId === clientId);
-  }, [posts]);
+    return allPosts.filter(p => p.clientId === clientId && !p.deletedAt);
+  }, [allPosts]);
 
-  return { clients, posts, loading, addClient, updateClient, deleteClient, addPost, updatePost, deletePost, movePost, assignPost, getClientPosts };
+  return { 
+    clients, posts, trashedPosts, loading, addClient, updateClient, deleteClient, 
+    addPost, updatePost, deletePost, restorePost, hardDeletePost, emptyTrash,
+    movePost, assignPost, getClientPosts 
+  };
 }

@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clients', icon: Users, label: 'Clientes' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
+  { to: '/trash', icon: Trash2, label: 'Lixeira' },
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ];
 

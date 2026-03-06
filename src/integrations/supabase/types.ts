@@ -82,6 +82,7 @@ export type Database = {
           client_id: string
           comments: Json
           created_at: string
+          deleted_at: string | null
           id: string
           image_url: string
           images: Json | null
@@ -99,6 +100,7 @@ export type Database = {
           client_id: string
           comments?: Json
           created_at?: string
+          deleted_at?: string | null
           id?: string
           image_url?: string
           images?: Json | null
@@ -116,6 +118,7 @@ export type Database = {
           client_id?: string
           comments?: Json
           created_at?: string
+          deleted_at?: string | null
           id?: string
           image_url?: string
           images?: Json | null

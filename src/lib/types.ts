@@ -27,6 +27,7 @@ export interface Post {
   approvalLink?: string;
   comments: PostComment[];
   createdAt: string;
+  deletedAt?: string;
 }
 
 export interface Client {
