@@ -16,6 +16,7 @@ import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import MetaIcon from '@/components/icons/MetaIcon';
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -142,10 +143,6 @@ export default function ClientDetailPage() {
 
   const isUrl = client.logo && client.logo.startsWith('http');
 
-  const MetaIcon = ({ className }: { className?: string }) => (
-    <img src="/meta-icon.svg" alt="Meta Icon" className={className} />
-  );
-
   return (
     <div className="animate-slide-in">
       <button onClick={() => navigate('/clients')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors active:scale-95">
@@ -166,8 +163,8 @@ export default function ClientDetailPage() {
               <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0" title="Integração Meta">
-                <MetaIcon className="w-5 h-5 dark:invert" />
+              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0 text-foreground hover:bg-muted" title="Integração Meta">
+                <MetaIcon className="w-6 h-6" />
               </Button>
               <Button
                 variant="ghost"
@@ -307,7 +304,7 @@ export default function ClientDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              <MetaIcon className="w-5 h-5 dark:invert" /> Integração Meta (Setup)
+              <MetaIcon className="w-6 h-6 text-foreground" /> Integração Meta (Setup)
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
@@ -327,7 +324,7 @@ export default function ClientDetailPage() {
                   variant="outline"
                   className="w-full font-semibold flex items-center justify-center gap-2 group hover:bg-muted hover:text-foreground"
                 >
-                  <MetaIcon className="w-5 h-5 dark:invert group-hover:scale-110 transition-transform" /> 
+                  <MetaIcon className="w-6 h-6 text-foreground transition-transform group-hover:scale-105 group-hover:text-primary" /> 
                   Conectar com Meta
                 </Button>
               )}
