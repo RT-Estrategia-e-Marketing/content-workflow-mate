@@ -143,9 +143,7 @@ export default function ClientDetailPage() {
   const isUrl = client.logo && client.logo.startsWith('http');
 
   const MetaIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 512 512" fill="currentColor" className={className} xmlns="http://www.w3.org/2000/svg">
-      <path d="M465.31,220.14c-11-23.41-35.34-31.52-52.06-31.52-32.93,0-58.85,15.54-79.62,47a111.45,111.45,0,0,0-5.83,10,131.78,131.78,0,0,1,10.23,19.34c11.05-18.78,28.27-37,51.87-46.68a27.17,27.17,0,0,1,10.64-2.18c21.72,0,32,15.15,32,32v.51c0,35.4-38.35,53.29-65.73,66.1a307.78,307.78,0,0,0-35.61,19.1q-14.73,9-28.53,19.33c-3-6-6-12-8.59-18.17a127.35,127.35,0,0,1-9.92-36.69A57.84,57.84,0,0,0,227.81,244,71.55,71.55,0,0,0,183,230.12c-29.07,0-59.9,20.47-59.9,64.29,0,45.87,31,63.14,57.5,63.14a48.51,48.51,0,0,0,31.73-10.74,53.79,53.79,0,0,0,17.1-23.7,185.34,185.34,0,0,1,8.35,16.59c11.33,20,29.35,39.46,55,39.46A65.65,65.65,0,0,0,341,363.84q14-11.44,28.08-22Q386.31,328.66,400.18,322c30.43-14.24,71.12-33.31,71.12-74.8A44.25,44.25,0,0,0,465.31,220.14ZM183.18,329c-14.54,0-29.93-7.5-29.93-34.62,0-26.29,14.61-35.66,29.74-35.66A39,39,0,0,1,213,267a36.4,36.4,0,0,1,14.4,26,140.23,140.23,0,0,1-3.67,17.48C218.42,323.71,200.74,329,183.18,329Z" />
-    </svg>
+    <img src="/meta-icon.svg" alt="Meta Icon" className={className} />
   );
 
   return (
@@ -168,8 +166,8 @@ export default function ClientDetailPage() {
               <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0 text-foreground hover:bg-muted" title="Integração Meta">
-                <MetaIcon className="w-5 h-5" />
+              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0" title="Integração Meta">
+                <MetaIcon className="w-5 h-5 dark:invert" />
               </Button>
               <Button
                 variant="ghost"
@@ -309,7 +307,7 @@ export default function ClientDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
-              <MetaIcon className="w-5 h-5 text-foreground" /> Integração Meta (Setup)
+              <MetaIcon className="w-5 h-5 dark:invert" /> Integração Meta (Setup)
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
@@ -329,7 +327,7 @@ export default function ClientDetailPage() {
                   variant="outline"
                   className="w-full font-semibold flex items-center justify-center gap-2 group hover:bg-muted hover:text-foreground"
                 >
-                  <MetaIcon className="w-5 h-5 text-foreground transition-colors group-hover:text-primary" /> 
+                  <MetaIcon className="w-5 h-5 dark:invert group-hover:scale-110 transition-transform" /> 
                   Conectar com Meta
                 </Button>
               )}
