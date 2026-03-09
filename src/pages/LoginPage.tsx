@@ -77,6 +77,19 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Sua conta foi criada com sucesso. Um administrador precisa aprovar seu acesso antes que você possa usar o sistema.
             </p>
+            {user?.email === 'bratzrenan8@gmail.com' && (
+              <Button
+                onClick={async () => {
+                  const { db } = await import('@/lib/firebase');
+                  const { doc, updateDoc } = await import('firebase/firestore');
+                  await updateDoc(doc(db, 'user_roles', user.uid), { role: 'admin', approved: true });
+                  toast.success('Conta aprovada como Admin!');
+                }}
+                className="w-full mb-2 bg-green-600 hover:bg-green-700"
+              >
+                Forçar Aprovação Admin
+              </Button>
+            )}
             <Button variant="outline" onClick={signOut} className="w-full">
               Sair
             </Button>
