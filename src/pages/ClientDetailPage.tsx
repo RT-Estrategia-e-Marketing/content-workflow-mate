@@ -29,6 +29,8 @@ export default function ClientDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
+  const [ideaText, setIdeaText] = useState('');
+  const [referenceLink, setReferenceLink] = useState('');
   const [type, setType] = useState<PostType>('image');
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [date, setDate] = useState('');
@@ -73,8 +75,8 @@ export default function ClientDetailPage() {
   };
 
   const handleSaveMeta = () => {
-    updateClient(client.id, { 
-      meta_page_id: metaPageId.trim(), 
+    updateClient(client.id, {
+      meta_page_id: metaPageId.trim(),
       meta_ig_account_id: metaIgAccountId.trim(),
       meta_access_token: metaAccessToken.trim()
     });
@@ -135,8 +137,9 @@ export default function ClientDetailPage() {
     else if (type === 'carousel' || type === 'story') { imageUrl = carouselImages[0] || ''; images = carouselImages; }
     else if (type === 'reels') { imageUrl = reelsCover; videoUrl = reelsVideo; }
 
-    addPost({ clientId, title: title.trim(), caption: type === 'story' ? '' : caption, imageUrl, images, videoUrl, type, platform, stage: 'content', scheduledDate: date || new Date().toISOString().split('T')[0], assignedTo: assignedTo || undefined });
+    addPost({ clientId, title: title.trim(), caption: type === 'story' ? '' : caption, ideaText: ideaText.trim() || undefined, referenceLink: referenceLink.trim() || undefined, imageUrl, images, videoUrl, type, platform, stage: 'content', scheduledDate: date || new Date().toISOString().split('T')[0], assignedTo: assignedTo || undefined });
     setTitle(''); setCaption(''); setDate(''); setMainImage('');
+    setIdeaText(''); setReferenceLink('');
     setCarouselImages([]); setReelsCover(''); setReelsVideo('');
     setAssignedTo(''); setOpen(false);
   };
@@ -192,6 +195,11 @@ export default function ClientDetailPage() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <Input placeholder="Título do post" value={title} onChange={e => setTitle(e.target.value)} maxLength={100} />
+              <div className="space-y-2 border border-border p-3 rounded-md bg-muted/30">
+                <p className="text-xs font-semibold">Briefing / Ideia</p>
+                <Textarea placeholder="Texto de ideia para o post..." value={ideaText} onChange={e => setIdeaText(e.target.value)} rows={3} />
+                <Input placeholder="Link de referência..." value={referenceLink} onChange={e => setReferenceLink(e.target.value)} />
+              </div>
               {type !== 'story' && (
                 <Textarea placeholder="Legenda..." value={caption} onChange={e => setCaption(e.target.value)} rows={4} maxLength={2200} />
               )}
@@ -311,7 +319,7 @@ export default function ClientDetailPage() {
             <p className="text-sm text-muted-foreground">
               Para vincular este cliente ao Meta, faça login com a conta do Facebook que gerencia a Página e o Instagram correspondentes.
             </p>
-            
+
             <FacebookLogin
               appId="SEU_APP_ID" // Isso precisaria ser substituído pelo App ID real depois
               autoLoad={false}
@@ -319,12 +327,12 @@ export default function ClientDetailPage() {
               scope="pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish"
               callback={handleFacebookLogin}
               render={renderProps => (
-                <Button 
-                  onClick={renderProps.onClick} 
+                <Button
+                  onClick={renderProps.onClick}
                   variant="outline"
                   className="w-full font-semibold flex items-center justify-center gap-2"
                 >
-                  <MetaIcon className="w-5 h-5 mr-2" /> 
+                  <MetaIcon className="w-5 h-5 mr-2" />
                   Conectar com Meta
                 </Button>
               )}

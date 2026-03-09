@@ -33,6 +33,7 @@ function PlatformBadge({ platform }: { platform: Platform }) {
 
 const STAGE_COLORS: Record<string, string> = {
   content: 'bg-blue-400',
+  design: 'bg-indigo-400',
   internal_approval: 'bg-yellow-400',
   adjustments: 'bg-orange-400',
   client_approval: 'bg-purple-400',
@@ -207,9 +208,8 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 onDragOver={(e) => handleDragOver(e, stage.key)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.key)}
-                className={`min-w-[240px] sm:min-w-[280px] w-[240px] sm:w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-2 sm:p-3 transition-all ${
-                  isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
-                }`}
+                className={`min-w-[240px] sm:min-w-[280px] w-[240px] sm:w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-2 sm:p-3 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">

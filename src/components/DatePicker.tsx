@@ -28,7 +28,7 @@ export default function DatePicker({ value, onChange, className }: DatePickerPro
         <Button
           variant="outline"
           className={cn(
-            'w-full justify-start text-left font-normal h-10 hover:bg-transparent hover:border-primary focus-visible:ring-primary/30',
+            'w-full justify-start text-left font-normal h-10 hover:border-primary focus-visible:ring-primary/30',
             !value && 'text-muted-foreground',
             className
           )}

@@ -61,6 +61,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(post.title);
   const [caption, setCaption] = useState(post.caption);
+  const [ideaText, setIdeaText] = useState(post.ideaText || '');
+  const [referenceLink, setReferenceLink] = useState(post.referenceLink || '');
   const [type, setType] = useState<PostType>(post.type);
   const [platform, setPlatform] = useState<Platform>(post.platform);
   const [date, setDate] = useState(post.scheduledDate);
@@ -190,6 +192,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
     updatePost(post.id, {
       title, caption: type === 'story' ? '' : caption, type, platform, scheduledDate: date,
+      ideaText: ideaText.trim() || undefined,
+      referenceLink: referenceLink.trim() || undefined,
       imageUrl, images, videoUrl: type === 'reels' ? videoUrl : undefined,
     });
     setEditing(false);
@@ -205,6 +209,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const resetEdit = () => {
     setTitle(post.title);
     setCaption(post.caption);
+    setIdeaText(post.ideaText || '');
+    setReferenceLink(post.referenceLink || '');
     setType(post.type);
     setPlatform(post.platform);
     setDate(post.scheduledDate);
@@ -239,6 +245,13 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
           {editing ? (
             <div className="space-y-4 mt-2">
               <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" maxLength={100} />
+              {(post.stage === 'content' || post.stage === 'design') && (
+                <div className="space-y-2 border border-border p-3 rounded-md bg-muted/30">
+                  <p className="text-xs font-semibold">Briefing / Ideia</p>
+                  <Textarea placeholder="Texto de ideia para o post..." value={ideaText} onChange={e => setIdeaText(e.target.value)} rows={3} />
+                  <Input placeholder="Link de referência..." value={referenceLink} onChange={e => setReferenceLink(e.target.value)} />
+                </div>
+              )}
               {type !== 'story' && (
                 <Textarea value={caption} onChange={e => setCaption(e.target.value)} placeholder="Legenda..." rows={4} maxLength={2200} />
               )}
@@ -358,6 +371,18 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               </div>
 
               {/* Preview content */}
+              {(post.stage === 'content' || post.stage === 'design') && (post.ideaText || post.referenceLink) && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                  <p className="text-xs font-semibold text-foreground mb-2">Briefing / Ideia</p>
+                  {post.ideaText && <p className="text-sm text-foreground whitespace-pre-wrap mb-2">{post.ideaText}</p>}
+                  {post.referenceLink && (
+                    <a href={post.referenceLink} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-primary hover:underline break-all">
+                      <Link2 className="w-3 h-3" /> {post.referenceLink}
+                    </a>
+                  )}
+                </div>
+              )}
+
               {(post.type === 'carousel' || post.type === 'story') && post.images && post.images.length > 0 ? (
                 <PreviewCarousel images={post.images.filter(Boolean)} />
               ) : post.imageUrl ? (

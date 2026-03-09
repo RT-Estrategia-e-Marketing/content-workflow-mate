@@ -27,6 +27,8 @@ interface DbPost {
   type: string;
   platform: string;
   stage: string;
+  idea_text: string | null;
+  reference_link: string | null;
   assigned_to: string | null;
   scheduled_date: string;
   approval_link: string | null;
@@ -35,7 +37,7 @@ interface DbPost {
 }
 
 function dbClientToClient(c: DbClient): Client {
-  return { 
+  return {
     id: c.id, name: c.name, logo: c.logo, color: c.color, postsCount: 0,
     meta_access_token: c.meta_access_token,
     meta_page_id: c.meta_page_id,
@@ -57,6 +59,8 @@ function dbPostToPost(p: DbPost): Post {
     type: p.type as Post['type'],
     platform: p.platform as Post['platform'],
     stage: p.stage as KanbanStage,
+    ideaText: p.idea_text || undefined,
+    referenceLink: p.reference_link || undefined,
     assignedTo: p.assigned_to || undefined,
     scheduledDate: p.scheduled_date,
     approvalLink: p.approval_link || undefined,
@@ -135,7 +139,7 @@ export function useAppData() {
     if (data.meta_page_name !== undefined) update.meta_page_name = data.meta_page_name;
     if (data.meta_ig_account_id !== undefined) update.meta_ig_account_id = data.meta_ig_account_id;
     if (data.meta_ig_account_name !== undefined) update.meta_ig_account_name = data.meta_ig_account_name;
-    
+
     await supabase.from('clients').update(update).eq('id', clientId);
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...data } : c));
   }, []);
@@ -161,6 +165,8 @@ export function useAppData() {
       type: post.type,
       platform: post.platform,
       stage: post.stage,
+      idea_text: post.ideaText || null,
+      reference_link: post.referenceLink || null,
       assigned_to: post.assignedTo || null,
       scheduled_date: post.scheduledDate,
     }).select().single();
@@ -180,6 +186,8 @@ export function useAppData() {
     if (data.type !== undefined) update.type = data.type;
     if (data.platform !== undefined) update.platform = data.platform;
     if (data.stage !== undefined) update.stage = data.stage;
+    if (data.ideaText !== undefined) update.idea_text = data.ideaText;
+    if (data.referenceLink !== undefined) update.reference_link = data.referenceLink;
     if (data.assignedTo !== undefined) update.assigned_to = data.assignedTo;
     if (data.scheduledDate !== undefined) update.scheduled_date = data.scheduledDate;
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
@@ -255,9 +263,9 @@ export function useAppData() {
     return allPosts.filter(p => p.clientId === clientId && p.stage !== 'trash');
   }, [allPosts]);
 
-  return { 
-    clients, posts, trashedPosts, loading, addClient, updateClient, deleteClient, 
+  return {
+    clients, posts, trashedPosts, loading, addClient, updateClient, deleteClient,
     addPost, updatePost, deletePost, restorePost, hardDeletePost, emptyTrash,
-    movePost, assignPost, getClientPosts 
+    movePost, assignPost, getClientPosts
   };
 }
