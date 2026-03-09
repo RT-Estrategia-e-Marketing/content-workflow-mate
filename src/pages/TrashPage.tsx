@@ -24,8 +24,8 @@ export default function TrashPage() {
     : trashedPosts;
 
   return (
-    <div className="animate-slide-in max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+    <div className="animate-slide-in">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
             Lixeira
