@@ -47,9 +47,8 @@ export function useUserRole() {
     };
   }, [user]);
 
-  const isSuperUser = user?.email === 'bratzrenan8@gmail.com';
-  const isAdmin = isSuperUser || (userRole?.role === 'admin' && userRole?.approved);
-  const isApproved = isSuperUser || (userRole?.approved ?? false);
+  const isAdmin = userRole?.role === 'admin' && userRole?.approved;
+  const isApproved = userRole?.approved ?? false;
 
   const approveUser = useCallback(async (userId: string, role: 'admin' | 'manager' | 'member') => {
     const roleDoc = allRoles.find(r => r.user_id === userId);
