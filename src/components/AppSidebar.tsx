@@ -39,7 +39,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const myProfile = profiles.find(p => p.user_id === user?.id);
+  const myProfile = profiles.find(p => p.user_id === user?.uid);
 
   const [editName, setEditName] = useState('');
   const [editJobTitle, setEditJobTitle] = useState('');
@@ -153,8 +153,8 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                 to={item.to}
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`}
               >
                 <item.icon className="w-5 h-5" />
