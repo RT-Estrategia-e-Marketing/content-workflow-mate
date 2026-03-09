@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserRole } from '@/hooks/useUserRole';
 import KanbanBoard from '@/components/KanbanBoard';
-import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2, Facebook } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,11 @@ export default function ClientDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [metaPageId, setMetaPageId] = useState('');
+  const [metaIgAccountId, setMetaIgAccountId] = useState('');
+  const [metaAccessToken, setMetaAccessToken] = useState('');
+
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
   const openEditClient = () => {
@@ -56,6 +61,23 @@ export default function ClientDetailPage() {
     if (!editName.trim()) return;
     updateClient(client.id, { name: editName.trim(), logo: editLogo || '' });
     setEditOpen(false);
+  };
+
+  const openMetaDialog = () => {
+    setMetaPageId(client.meta_page_id || '');
+    setMetaIgAccountId(client.meta_ig_account_id || '');
+    setMetaAccessToken(client.meta_access_token || '');
+    setMetaOpen(true);
+  };
+
+  const handleSaveMeta = () => {
+    updateClient(client.id, { 
+      meta_page_id: metaPageId.trim(), 
+      meta_ig_account_id: metaIgAccountId.trim(),
+      meta_access_token: metaAccessToken.trim()
+    });
+    setMetaOpen(false);
+    toast.success('Integração com Meta atualizada');
   };
 
   const handleCarouselDragStart = (e: DragEvent, idx: number) => {
@@ -126,6 +148,9 @@ export default function ClientDetailPage() {
             <>
               <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
                 <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Integração Meta">
+                <Facebook className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -257,6 +282,34 @@ export default function ClientDetailPage() {
                 Excluir Cliente
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Meta Integration Dialog */}
+      <Dialog open={metaOpen} onOpenChange={setMetaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Facebook className="w-5 h-5 text-blue-600" /> Integração Meta (Setup)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Preencha as credenciais do Meta (Facebook/Instagram) para habilitar o agendamento automático futuramente.
+            </p>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground">Access Token (User/Page)</label>
+              <Input placeholder="EAAG..." value={metaAccessToken} onChange={e => setMetaAccessToken(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground">ID da Página (Facebook)</label>
+              <Input placeholder="1234567890..." value={metaPageId} onChange={e => setMetaPageId(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-foreground">ID da Conta Profissional (Instagram)</label>
+              <Input placeholder="178414..." value={metaIgAccountId} onChange={e => setMetaIgAccountId(e.target.value)} />
+            </div>
+            <Button onClick={handleSaveMeta} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Salvar Configurações</Button>
           </div>
         </DialogContent>
       </Dialog>

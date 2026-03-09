@@ -35,6 +35,11 @@ export interface Client {
   logo: string;
   color: string;
   postsCount: number;
+  meta_access_token?: string;
+  meta_page_id?: string;
+  meta_page_name?: string;
+  meta_ig_account_id?: string;
+  meta_ig_account_name?: string;
 }
 
 export const KANBAN_STAGES: { key: KanbanStage; label: string }[] = [

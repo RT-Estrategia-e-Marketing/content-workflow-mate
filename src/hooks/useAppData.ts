@@ -9,6 +9,11 @@ interface DbClient {
   logo: string;
   color: string;
   created_at: string;
+  meta_access_token?: string;
+  meta_page_id?: string;
+  meta_page_name?: string;
+  meta_ig_account_id?: string;
+  meta_ig_account_name?: string;
 }
 
 interface DbPost {
@@ -30,7 +35,14 @@ interface DbPost {
 }
 
 function dbClientToClient(c: DbClient): Client {
-  return { id: c.id, name: c.name, logo: c.logo, color: c.color, postsCount: 0 };
+  return { 
+    id: c.id, name: c.name, logo: c.logo, color: c.color, postsCount: 0,
+    meta_access_token: c.meta_access_token,
+    meta_page_id: c.meta_page_id,
+    meta_page_name: c.meta_page_name,
+    meta_ig_account_id: c.meta_ig_account_id,
+    meta_ig_account_name: c.meta_ig_account_name,
+  };
 }
 
 function dbPostToPost(p: DbPost): Post {
@@ -118,6 +130,12 @@ export function useAppData() {
     if (data.name !== undefined) update.name = data.name;
     if (data.logo !== undefined) update.logo = data.logo;
     if (data.color !== undefined) update.color = data.color;
+    if (data.meta_access_token !== undefined) update.meta_access_token = data.meta_access_token;
+    if (data.meta_page_id !== undefined) update.meta_page_id = data.meta_page_id;
+    if (data.meta_page_name !== undefined) update.meta_page_name = data.meta_page_name;
+    if (data.meta_ig_account_id !== undefined) update.meta_ig_account_id = data.meta_ig_account_id;
+    if (data.meta_ig_account_name !== undefined) update.meta_ig_account_name = data.meta_ig_account_name;
+    
     await supabase.from('clients').update(update).eq('id', clientId);
     setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...data } : c));
   }, []);
