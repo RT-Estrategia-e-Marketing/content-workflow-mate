@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
+import { collection, query, where, limit, onSnapshot, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 
 export interface UserRole {
   id: string;
@@ -16,66 +17,54 @@ export function useUserRole() {
   const [allRoles, setAllRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
-    const { data } = await supabase
-      .from('user_roles')
-      .select('*')
-      .eq('user_id', user.id)
-      .limit(1);
-    if (data && data.length > 0) setUserRole(data[0] as unknown as UserRole);
-    setLoading(false);
-  }, [user]);
-
-  const fetchAllRoles = useCallback(async () => {
-    const { data } = await supabase.from('user_roles').select('*').order('created_at');
-    if (data) setAllRoles(data as unknown as UserRole[]);
-  }, []);
-
   useEffect(() => {
-    fetchRole();
-    fetchAllRoles();
-  }, [fetchRole, fetchAllRoles]);
+    if (!user) {
+      setUserRole(null);
+      setAllRoles([]);
+      setLoading(false);
+      return;
+    }
 
-  // Handle auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchRole();
-      fetchAllRoles();
+    const roleQuery = query(collection(db, 'user_roles'), where('user_id', '==', user.uid), limit(1));
+    const unsubscribeRole = onSnapshot(roleQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        setUserRole({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as UserRole);
+      } else {
+        setUserRole(null);
+      }
+      setLoading(false);
     });
-    return () => { subscription.unsubscribe(); };
-  }, [fetchRole, fetchAllRoles]);
 
-  // Realtime subscription for user_roles changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('user-roles-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        fetchRole();
-        fetchAllRoles();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchRole, fetchAllRoles]);
+    const allRolesQuery = query(collection(db, 'user_roles'), orderBy('created_at'));
+    const unsubscribeAll = onSnapshot(allRolesQuery, (snapshot) => {
+      const roles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserRole));
+      setAllRoles(roles);
+    });
+
+    return () => {
+      unsubscribeRole();
+      unsubscribeAll();
+    };
+  }, [user]);
 
   const isAdmin = userRole?.role === 'admin' && userRole?.approved;
   const isApproved = userRole?.approved ?? false;
 
   const approveUser = useCallback(async (userId: string, role: 'admin' | 'manager' | 'member') => {
-    await supabase
-      .from('user_roles')
-      .update({ approved: true, role } as any)
-      .eq('user_id', userId);
-    fetchAllRoles();
-  }, [fetchAllRoles]);
+    const roleDoc = allRoles.find(r => r.user_id === userId);
+    if (roleDoc) {
+      await updateDoc(doc(db, 'user_roles', roleDoc.id), { approved: true, role });
+    }
+  }, [allRoles]);
 
   const rejectUser = useCallback(async (userId: string) => {
-    await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', userId);
-    fetchAllRoles();
-  }, [fetchAllRoles]);
+    const roleDoc = allRoles.find(r => r.user_id === userId);
+    if (roleDoc) {
+      await deleteDoc(doc(db, 'user_roles', roleDoc.id));
+    }
+  }, [allRoles]);
 
-  return { userRole, allRoles, loading, isAdmin, isApproved, approveUser, rejectUser, refetch: fetchAllRoles };
+  const refetch = useCallback(() => { }, []);
+
+  return { userRole, allRoles, loading, isAdmin, isApproved, approveUser, rejectUser, refetch };
 }

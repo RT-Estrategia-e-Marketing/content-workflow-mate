@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PostType, Platform } from '@/lib/types';
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
-import { supabase } from '@/integrations/supabase/client';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
 import MetaIcon from '@/components/icons/MetaIcon';
 
@@ -118,11 +119,16 @@ export default function ClientDetailPage() {
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} muito grande`); continue; }
       const ext = file.name.split('.').pop();
-      const path = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-      const { error } = await supabase.storage.from('post-media').upload(path, file);
-      if (error) { toast.error(`Erro: ${file.name}`); continue; }
-      const { data: { publicUrl } } = supabase.storage.from('post-media').getPublicUrl(path);
-      uploads.push(publicUrl);
+      const path = `post-media/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+      const storageRef = ref(storage, path);
+      try {
+        await uploadBytes(storageRef, file);
+        const publicUrl = await getDownloadURL(storageRef);
+        uploads.push(publicUrl);
+      } catch (err) {
+        toast.error(`Erro: ${file.name}`);
+        continue;
+      }
     }
     setCarouselImages(prev => [...prev, ...uploads]);
     if (uploads.length > 0) toast.success(`${uploads.length} imagem(ns) adicionada(s)`);

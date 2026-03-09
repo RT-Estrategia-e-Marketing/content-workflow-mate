@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle, Trash2, Eye, EyeOff, KeyRound } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { db, secondaryAuth } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -42,20 +44,6 @@ export default function SettingsPage() {
   const [showChangePass, setShowChangePass] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
 
-  // Realtime subscription for roles and profiles
-  useEffect(() => {
-    const channel = supabase
-      .channel('settings-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
-        refetchRoles();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        refetch();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [refetchRoles, refetch]);
-
   const handleAddMember = async () => {
     if (!newEmail.trim() || !newPassword.trim() || !newName.trim()) return;
     if (newPassword !== newPasswordConfirm) {
@@ -69,33 +57,30 @@ export default function SettingsPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: {
-          action: 'create-user',
-          email: newEmail.trim(),
-          password: newPassword,
-          full_name: newName.trim(),
-          role: newRole,
-        },
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, newEmail.trim(), newPassword);
+      const uid = cred.user.uid;
+
+      await setDoc(doc(db, 'profiles', uid), {
+        user_id: uid,
+        full_name: newName.trim(),
+        job_title: newJobTitle.trim(),
+        priority: 'member',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+
+      await setDoc(doc(db, 'user_roles', uid), {
+        user_id: uid,
+        role: newRole,
+        approved: true,
+        created_at: new Date().toISOString()
+      });
+
+      // Clear the secondary auth so they don't stay logged in
+      secondaryAuth.signOut();
 
       toast.success(`Usuário ${newName.trim()} criado com sucesso!`);
       setNewEmail(''); setNewPassword(''); setNewPasswordConfirm(''); setNewName(''); setNewJobTitle(''); setNewRole('member');
-
-      // Update job title if provided
-      setTimeout(async () => {
-        refetch();
-        refetchRoles();
-        if (newJobTitle.trim() && data?.user_id) {
-          const { data: newProfiles } = await supabase.from('profiles').select('*').eq('user_id', data.user_id).limit(1);
-          if (newProfiles && newProfiles.length > 0) {
-            await supabase.from('profiles').update({ job_title: newJobTitle.trim() } as any).eq('id', newProfiles[0].id);
-            refetch();
-          }
-        }
-      }, 1000);
     } catch (err: any) {
       toast.error('Erro ao criar usuário: ' + (err.message || ''));
     }
@@ -103,8 +88,7 @@ export default function SettingsPage() {
   };
 
   const handleUpdateJobTitle = async (profileId: string, job_title: string) => {
-    await supabase.from('profiles').update({ job_title } as any).eq('id', profileId);
-    refetch();
+    await updateDoc(doc(db, 'profiles', profileId), { job_title });
     toast.success('Função atualizada');
   };
 
@@ -116,13 +100,11 @@ export default function SettingsPage() {
   const handleReject = async (userId: string) => {
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: userId },
-      });
-      if (error) throw error;
-      toast.success('Usuário rejeitado e removido');
-      refetchRoles();
-      refetch();
+      // Deleting users fully from Firebase auth requires Admin SDK / Cloud Functions.
+      // We'll just delete their roles and profiles to simulate rejection.
+      await deleteDoc(doc(db, 'user_roles', userId));
+      await deleteDoc(doc(db, 'profiles', userId));
+      toast.success('Usuário rejeitado e removido da área de membros');
     } catch (err: any) {
       toast.error('Erro ao rejeitar: ' + (err.message || ''));
     }
@@ -133,14 +115,10 @@ export default function SettingsPage() {
     if (!deleteUserId || deleteUserConfirm !== 'EXCLUIR') return;
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: deleteUserId },
-      });
-      if (error) throw error;
-      toast.success('Usuário excluído');
+      await deleteDoc(doc(db, 'user_roles', deleteUserId));
+      await deleteDoc(doc(db, 'profiles', deleteUserId));
+      toast.success('Perfil excluído. (Nota: A exclusão da conta Firebase do usuário requer funções de Admin Backend)');
       setDeleteUserOpen(false);
-      refetchRoles();
-      refetch();
     } catch (err: any) {
       toast.error('Erro ao excluir: ' + (err.message || ''));
     }
@@ -174,17 +152,10 @@ export default function SettingsPage() {
       return;
     }
     setChangingPass(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { action: 'change-password', user_id: changePassUserId, password: changePassValue },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(`Senha de ${changePassUserName} alterada!`);
-      setChangePassOpen(false);
-    } catch (err: any) {
-      toast.error('Erro ao alterar senha: ' + (err.message || ''));
-    }
+    // Real password changes on OTHER users require Firebase Admin SDK.
+    // For now, this is disabled until backend Admin SDK is configured.
+    toast.error('Aviso: Alterar senha de outro usuário requer Firebase Admin SDK (Backend).');
+    setChangePassOpen(false);
     setChangingPass(false);
   };
 
@@ -255,7 +226,7 @@ export default function SettingsPage() {
         <div className="space-y-3 mb-6">
           {profiles.map(m => {
             const role = approvedRoles.find(r => r.user_id === m.user_id);
-            const isMe = m.user_id === user?.id;
+            const isMe = m.user_id === user?.uid;
             return (
               <div key={m.id} className="p-3 bg-secondary rounded-lg space-y-2">
                 <div className="flex items-center justify-between">

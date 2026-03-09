@@ -10,7 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import FileUpload from '@/components/FileUpload';
-import { supabase } from '@/integrations/supabase/client';
+import { auth, db } from '@/lib/firebase';
+import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
@@ -57,17 +59,21 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
   const handleSaveProfile = async () => {
     if (!myProfile) return;
     setSaving(true);
-    await supabase.from('profiles').update({
+    await updateDoc(doc(db, 'profiles', myProfile.id), {
       full_name: editName.trim(),
       job_title: editJobTitle.trim(),
       avatar_url: editAvatar || null,
-    }).eq('id', myProfile.id);
+    });
     if (newPassword.trim().length >= 6) {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) toast.error('Erro ao alterar senha: ' + error.message);
-      else toast.success('Senha alterada!');
+      if (auth.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, newPassword);
+          toast.success('Senha alterada!');
+        } catch (error: any) {
+          toast.error('Erro ao alterar senha: ' + error.message);
+        }
+      }
     }
-    refetch();
     setSaving(false);
     setProfileOpen(false);
     toast.success('Perfil atualizado!');
@@ -97,7 +103,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
               <Kanban className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display text-xl font-bold text-sidebar-primary-foreground">PostFlow</span>
-            
+
             <Popover>
               <PopoverTrigger asChild>
                 <button className="ml-auto relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
@@ -146,11 +152,10 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                }`}
+                  }`}
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
@@ -289,9 +294,8 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${
-                    n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
-                  }`}
+                  className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
+                    }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}

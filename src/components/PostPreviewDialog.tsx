@@ -15,7 +15,8 @@ import { formatDateBR } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function PreviewCarousel({ images }: { images: string[] }) {
   const [idx, setIdx] = useState(0);
@@ -169,11 +170,16 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     for (const file of Array.from(files)) {
       if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} muito grande`); continue; }
       const ext = file.name.split('.').pop();
-      const path = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
-      const { error } = await supabase.storage.from('post-media').upload(path, file);
-      if (error) { toast.error(`Erro: ${file.name}`); continue; }
-      const { data: { publicUrl } } = supabase.storage.from('post-media').getPublicUrl(path);
-      uploads.push(publicUrl);
+      const path = `post-media/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+      const storageRef = ref(storage, path);
+      try {
+        await uploadBytes(storageRef, file);
+        const publicUrl = await getDownloadURL(storageRef);
+        uploads.push(publicUrl);
+      } catch (error) {
+        toast.error(`Erro: ${file.name}`);
+        continue;
+      }
     }
     setCarouselImages(prev => [...prev, ...uploads]);
     if (uploads.length > 0) toast.success(`${uploads.length} imagem(ns) adicionada(s)`);

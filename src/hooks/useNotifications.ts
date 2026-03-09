@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
 
 export interface Notification {
   id: string;
@@ -19,7 +20,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchNotifications = useCallback(async () => {
+  useEffect(() => {
     if (!user) {
       setNotifications([]);
       setLoading(false);
@@ -27,61 +28,52 @@ export function useNotifications() {
     }
 
     setLoading(true);
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('user_id', '==', user.uid)
+    );
 
-    if (data) {
-      setNotifications(data as unknown as Notification[]);
-    }
-    setLoading(false);
+    const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      // Sort client side to avoid requiring composite indexes immediately
+      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setNotifications(data);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  // Realtime subscription for instant sync across components and tabs
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, fetchNotifications]);
-
   const markAsRead = useCallback(async (id: string) => {
-    await supabase.from('notifications').update({ read: true } as any).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await updateDoc(doc(db, 'notifications', id), { read: true });
   }, []);
 
   const markAsUnread = useCallback(async (id: string) => {
-    await supabase.from('notifications').update({ read: false } as any).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n));
+    await updateDoc(doc(db, 'notifications', id), { read: false });
   }, []);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
-    await supabase.from('notifications').update({ read: true } as any).eq('user_id', user.id);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, [user]);
+    const batch = writeBatch(db);
+    notifications.filter(n => !n.read).forEach(n => {
+      batch.update(doc(db, 'notifications', n.id), { read: true });
+    });
+    await batch.commit();
+  }, [user, notifications]);
 
   const deleteNotification = useCallback(async (id: string) => {
     if (!user) return;
-    await supabase.from('notifications').delete().eq('id', id).eq('user_id', user.id);
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    await deleteDoc(doc(db, 'notifications', id));
   }, [user]);
 
   const deleteAllNotifications = useCallback(async () => {
     if (!user) return;
-    await supabase.from('notifications').delete().eq('user_id', user.id);
-    setNotifications([]);
-  }, [user]);
+    const batch = writeBatch(db);
+    notifications.forEach(n => {
+      batch.delete(doc(db, 'notifications', n.id));
+    });
+    await batch.commit();
+  }, [user, notifications]);
 
   const createNotification = useCallback(async (data: {
     user_id: string;
@@ -90,13 +82,16 @@ export function useNotifications() {
     type: string;
     message: string;
   }) => {
-    await supabase.from('notifications').insert({
+    await addDoc(collection(db, 'notifications'), {
       ...data,
-      from_user_id: user?.id,
-    } as any);
+      read: false,
+      from_user_id: user?.uid || null,
+      created_at: new Date().toISOString()
+    });
   }, [user]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const refetch = useCallback(() => { }, []);
 
-  return { notifications, loading, unreadCount, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications, createNotification, refetch: fetchNotifications };
+  return { notifications, loading, unreadCount, markAsRead, markAsUnread, markAllAsRead, deleteNotification, deleteAllNotifications, createNotification, refetch };
 }

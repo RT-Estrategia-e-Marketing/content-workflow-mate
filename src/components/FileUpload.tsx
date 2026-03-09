@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
@@ -29,18 +30,17 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
 
     setUploading(true);
     const ext = file.name.split('.').pop();
-    const path = `${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+    const path = `${bucket}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
+    const storageRef = ref(storage, path);
 
-    const { error } = await supabase.storage.from(bucket).upload(path, file);
-    if (error) {
+    try {
+      await uploadBytes(storageRef, file);
+      const publicUrl = await getDownloadURL(storageRef);
+      setPreviewUrl(publicUrl);
+      onUpload(publicUrl);
+    } catch (error) {
       toast.error('Erro no upload');
-      setUploading(false);
-      return;
     }
-
-    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path);
-    setPreviewUrl(publicUrl);
-    onUpload(publicUrl);
     setUploading(false);
   };
 

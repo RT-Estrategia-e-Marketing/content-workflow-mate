@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Kanban, Clock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/integrations/supabase/client';
+import { auth } from '@/lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function LoginPage() {
   const { signIn, signUp, signOut, user } = useAuth();
@@ -26,11 +27,12 @@ export default function LoginPage() {
     setLoading(true);
 
     if (isForgotPassword) {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) toast.error(error.message);
-      else setResetSent(true);
+      try {
+        await sendPasswordResetEmail(auth, email);
+        setResetSent(true);
+      } catch (error: any) {
+        toast.error(error.message);
+      }
       setLoading(false);
       return;
     }

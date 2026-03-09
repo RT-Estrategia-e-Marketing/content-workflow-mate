@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Post, Client, KanbanStage, PostComment } from '@/lib/types';
-import { supabase } from '@/integrations/supabase/client';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, writeBatch, getDocs, where } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { toast } from 'sonner';
 
 interface DbClient {
@@ -36,9 +38,9 @@ interface DbPost {
   created_at: string;
 }
 
-function dbClientToClient(c: DbClient): Client {
+function dbClientToClient(id: string, c: DbClient): Client {
   return {
-    id: c.id, name: c.name, logo: c.logo, color: c.color, postsCount: 0,
+    id: id, name: c.name, logo: c.logo, color: c.color, postsCount: 0,
     meta_access_token: c.meta_access_token,
     meta_page_id: c.meta_page_id,
     meta_page_name: c.meta_page_name,
@@ -47,9 +49,9 @@ function dbClientToClient(c: DbClient): Client {
   };
 }
 
-function dbPostToPost(p: DbPost): Post {
+function dbPostToPost(id: string, p: DbPost): Post {
   return {
-    id: p.id,
+    id: id,
     clientId: p.client_id,
     title: p.title,
     caption: p.caption,
@@ -77,60 +79,58 @@ export function useAppData() {
   const posts = allPosts.filter(p => p.stage !== 'trash');
   const trashedPosts = allPosts.filter(p => p.stage === 'trash');
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    // Only fetch if session exists
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setClients([]);
-      setAllPosts([]);
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    let unsubscribeClients: () => void;
+    let unsubscribePosts: () => void;
 
-    const [{ data: cData }, { data: pData }] = await Promise.all([
-      supabase.from('clients').select('*').order('created_at', { ascending: true }),
-      supabase.from('posts').select('*').order('created_at', { ascending: true }),
-    ]);
-    if (cData) setClients((cData as unknown as DbClient[]).map(dbClientToClient));
-    if (pData) setAllPosts((pData as unknown as DbPost[]).map(dbPostToPost));
-    setLoading(false);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setClients([]);
+        setAllPosts([]);
+        setLoading(false);
+        if (unsubscribeClients) unsubscribeClients();
+        if (unsubscribePosts) unsubscribePosts();
+        return;
+      }
+
+      const clientsQuery = query(collection(db, 'clients'), orderBy('created_at'));
+      unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+        const cData = snapshot.docs.map(doc => dbClientToClient(doc.id, doc.data() as DbClient));
+        setClients(cData);
+        setLoading(false);
+      });
+
+      const postsQuery = query(collection(db, 'posts'), orderBy('created_at'));
+      unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+        const pData = snapshot.docs.map(doc => dbPostToPost(doc.id, doc.data() as DbPost));
+        setAllPosts(pData);
+      });
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribePosts) unsubscribePosts();
+    };
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Handle auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchData();
-    });
-    return () => { subscription.unsubscribe(); };
-  }, [fetchData]);
-
-  // Realtime subscriptions
-  useEffect(() => {
-    const channel = supabase
-      .channel('app-data')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchData())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchData]);
-
   const addClient = useCallback(async (client: Omit<Client, 'id' | 'postsCount'>) => {
-    const { data, error } = await supabase.from('clients').insert({
-      name: client.name,
-      logo: client.logo,
-      color: client.color,
-    }).select().single();
-    if (error) { toast.error('Erro ao criar cliente'); return null; }
-    const newClient = dbClientToClient(data as DbClient);
-    setClients(prev => [...prev, newClient]);
-    return newClient;
+    try {
+      const docRef = await addDoc(collection(db, 'clients'), {
+        name: client.name,
+        logo: client.logo,
+        color: client.color,
+        created_at: new Date().toISOString()
+      });
+      return { id: docRef.id, ...client, postsCount: 0 } as Client;
+    } catch (error) {
+      toast.error('Erro ao criar cliente');
+      return null;
+    }
   }, []);
 
   const updateClient = useCallback(async (clientId: string, data: Partial<Omit<Client, 'id'>>) => {
-    const update: Record<string, unknown> = {};
+    const update: Record<string, any> = {};
     if (data.name !== undefined) update.name = data.name;
     if (data.logo !== undefined) update.logo = data.logo;
     if (data.color !== undefined) update.color = data.color;
@@ -140,44 +140,55 @@ export function useAppData() {
     if (data.meta_ig_account_id !== undefined) update.meta_ig_account_id = data.meta_ig_account_id;
     if (data.meta_ig_account_name !== undefined) update.meta_ig_account_name = data.meta_ig_account_name;
 
-    await supabase.from('clients').update(update).eq('id', clientId);
-    setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...data } : c));
+    await updateDoc(doc(db, 'clients', clientId), update);
   }, []);
 
   const deleteClient = useCallback(async (clientId: string) => {
-    // Delete posts first
-    await supabase.from('posts').delete().eq('client_id', clientId);
-    const { error } = await supabase.from('clients').delete().eq('id', clientId);
-    if (error) { toast.error('Erro ao excluir cliente'); return; }
-    setClients(prev => prev.filter(c => c.id !== clientId));
-    setAllPosts(prev => prev.filter(p => p.clientId !== clientId));
-    toast.success('Cliente excluído!');
+    try {
+      const batch = writeBatch(db);
+      const postsQuery = query(collection(db, 'posts'), where('client_id', '==', clientId));
+      const postDocs = await getDocs(postsQuery);
+
+      postDocs.forEach((postDoc) => {
+        batch.delete(postDoc.ref);
+      });
+      batch.delete(doc(db, 'clients', clientId));
+      await batch.commit();
+
+      toast.success('Cliente excluído!');
+    } catch (error) {
+      toast.error('Erro ao excluir cliente');
+    }
   }, []);
 
   const addPost = useCallback(async (post: Omit<Post, 'id' | 'createdAt' | 'comments' | 'approvalLink'>) => {
-    const { data, error } = await supabase.from('posts').insert({
-      client_id: post.clientId,
-      title: post.title,
-      caption: post.caption,
-      image_url: post.imageUrl,
-      images: post.images || null,
-      video_url: post.videoUrl || null,
-      type: post.type,
-      platform: post.platform,
-      stage: post.stage,
-      idea_text: post.ideaText || null,
-      reference_link: post.referenceLink || null,
-      assigned_to: post.assignedTo || null,
-      scheduled_date: post.scheduledDate,
-    }).select().single();
-    if (error) { toast.error('Erro ao criar post'); return null; }
-    const newPost = dbPostToPost(data as unknown as DbPost);
-    setAllPosts(prev => [...prev, newPost]);
-    return newPost;
+    try {
+      const newPostData = {
+        client_id: post.clientId,
+        title: post.title,
+        caption: post.caption,
+        image_url: post.imageUrl,
+        images: post.images || null,
+        video_url: post.videoUrl || null,
+        type: post.type,
+        platform: post.platform,
+        stage: post.stage,
+        idea_text: post.ideaText || null,
+        reference_link: post.referenceLink || null,
+        assigned_to: post.assignedTo || null,
+        scheduled_date: post.scheduledDate,
+        created_at: new Date().toISOString()
+      };
+      const docRef = await addDoc(collection(db, 'posts'), newPostData);
+      return dbPostToPost(docRef.id, newPostData as DbPost);
+    } catch (error) {
+      toast.error('Erro ao criar post');
+      return null;
+    }
   }, []);
 
   const updatePost = useCallback(async (postId: string, data: Partial<Omit<Post, 'id'>>) => {
-    const update: Record<string, unknown> = {};
+    const update: Record<string, any> = {};
     if (data.title !== undefined) update.title = data.title;
     if (data.caption !== undefined) update.caption = data.caption;
     if (data.imageUrl !== undefined) update.image_url = data.imageUrl;
@@ -192,48 +203,62 @@ export function useAppData() {
     if (data.scheduledDate !== undefined) update.scheduled_date = data.scheduledDate;
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
     if (data.comments !== undefined) update.comments = data.comments;
-    await supabase.from('posts').update(update).eq('id', postId);
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
+
+    await updateDoc(doc(db, 'posts', postId), update);
   }, []);
 
   const deletePost = useCallback(async (postId: string) => {
-    // Soft delete (move to trash stage)
-    const { error } = await supabase.from('posts').update({ stage: 'trash' }).eq('id', postId);
-    if (error) { toast.error('Erro ao excluir post'); return; }
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, stage: 'trash' } : p));
-    toast.success('Post movido para a lixeira!');
+    try {
+      await updateDoc(doc(db, 'posts', postId), { stage: 'trash' });
+      toast.success('Post movido para a lixeira!');
+    } catch (error) {
+      toast.error('Erro ao excluir post');
+    }
   }, []);
 
   const restorePost = useCallback(async (postId: string) => {
-    // Restore to content stage or previous known stage? Best is to content stage.
-    const { error } = await supabase.from('posts').update({ stage: 'content' }).eq('id', postId);
-    if (error) { toast.error('Erro ao restaurar post'); return; }
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, stage: 'content' } : p));
-    toast.success('Post restaurado com sucesso!');
+    try {
+      await updateDoc(doc(db, 'posts', postId), { stage: 'content' });
+      toast.success('Post restaurado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao restaurar post');
+    }
   }, []);
 
   const hardDeletePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (error) { toast.error('Erro ao excluir post definitivamente'); return; }
-    setAllPosts(prev => prev.filter(p => p.id !== postId));
-    toast.success('Post excluído definitivamente!');
+    try {
+      await deleteDoc(doc(db, 'posts', postId));
+      toast.success('Post excluído definitivamente!');
+    } catch (error) {
+      toast.error('Erro ao excluir post definitivamente');
+    }
   }, []);
 
   const emptyTrash = useCallback(async () => {
-    const { error } = await supabase.from('posts').delete().eq('stage', 'trash');
-    if (error) { toast.error('Erro ao esvaziar lixeira'); return; }
-    setAllPosts(prev => prev.filter(p => p.stage !== 'trash'));
-    toast.success('Lixeira esvaziada!');
+    try {
+      const trashQuery = query(collection(db, 'posts'), where('stage', '==', 'trash'));
+      const trashDocs = await getDocs(trashQuery);
+
+      const batch = writeBatch(db);
+      trashDocs.forEach((trashDoc) => {
+        batch.delete(trashDoc.ref);
+      });
+      await batch.commit();
+
+      toast.success('Lixeira esvaziada!');
+    } catch (error) {
+      toast.error('Erro ao esvaziar lixeira');
+    }
   }, []);
 
   const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
-    const post = posts.find(p => p.id === postId);
+    const post = allPosts.find(p => p.id === postId);
     if (!post) return;
 
-    const update: Record<string, unknown> = { stage: newStage };
+    const update: Record<string, any> = { stage: newStage };
 
     if (newStage === 'client_approval') {
-      const existingToken = posts.find(
+      const existingToken = allPosts.find(
         other => other.clientId === post.clientId && other.stage === 'client_approval' && other.approvalLink
       )?.approvalLink;
       const token = existingToken || `${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
@@ -247,16 +272,11 @@ export function useAppData() {
       });
     }
 
-    await supabase.from('posts').update(update).eq('id', postId);
-    setAllPosts(prev => prev.map(p => {
-      if (p.id !== postId) return p;
-      return { ...p, stage: newStage, approvalLink: (update.approval_link as string) || p.approvalLink };
-    }));
+    await updateDoc(doc(db, 'posts', postId), update);
   }, [allPosts]);
 
   const assignPost = useCallback(async (postId: string, memberId: string) => {
-    await supabase.from('posts').update({ assigned_to: memberId }).eq('id', postId);
-    setAllPosts(prev => prev.map(p => p.id === postId ? { ...p, assignedTo: memberId } : p));
+    await updateDoc(doc(db, 'posts', postId), { assigned_to: memberId });
   }, []);
 
   const getClientPosts = useCallback((clientId: string) => {

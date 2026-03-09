@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export interface Profile {
-  id: string;
-  user_id: string;
+  id: string; // The uid
+  user_id: string; // same as id usually
   full_name: string;
   priority: string;
   job_title: string;
@@ -15,42 +17,32 @@ export function useProfiles() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfiles = useCallback(async () => {
-    // Only fetch if session exists
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setProfiles([]);
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    let unsubscribeSnapshot: () => void;
 
-    const { data } = await supabase.from('profiles').select('*').order('created_at');
-    if (data) setProfiles(data as Profile[]);
-    setLoading(false);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setProfiles([]);
+        setLoading(false);
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        return;
+      }
+
+      const q = query(collection(db, 'profiles'), orderBy('created_at'));
+      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
+        setProfiles(data);
+        setLoading(false);
+      });
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
   }, []);
 
-  useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+  const refetch = useCallback(() => { }, []);
 
-  // Handle auth state changes
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchProfiles();
-    });
-    return () => { subscription.unsubscribe(); };
-  }, [fetchProfiles]);
-
-  // Realtime subscription for profiles
-  useEffect(() => {
-    const channel = supabase
-      .channel('profiles-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchProfiles();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchProfiles]);
-
-  return { profiles, loading, refetch: fetchProfiles };
+  return { profiles, loading, refetch };
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { auth } from '@/lib/firebase';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Kanban, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -12,20 +13,25 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [oobCode, setOobCode] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
-      setIsRecovery(true);
-    }
+    // Firebase uses an oobCode query parameter for action links
+    const queryParams = new URLSearchParams(location.search);
+    const code = queryParams.get('oobCode');
+    const mode = queryParams.get('mode');
 
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    if (mode === 'resetPassword' && code) {
+      verifyPasswordResetCode(auth, code).then(() => {
+        setOobCode(code);
         setIsRecovery(true);
-      }
-    });
-  }, []);
+      }).catch((e) => {
+        toast.error("Link inválido ou já expirado");
+      });
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +45,12 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await confirmPasswordReset(auth, oobCode, password);
       toast.success('Senha alterada com sucesso!');
       navigate('/');
+    } catch (error: any) {
+      toast.error(error.message);
     }
     setLoading(false);
   };
