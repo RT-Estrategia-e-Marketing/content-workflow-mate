@@ -22,11 +22,11 @@ import TrashPage from '@/pages/TrashPage';
 const queryClient = new QueryClient();
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const { isApproved, loading: roleLoading } = useUserRole();
+  // const { user, loading } = useAuth();
+  // const { isApproved, loading: roleLoading } = useUserRole();
 
-  if (loading || roleLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="text-muted-foreground">Carregando...</span></div>;
-  if (!user || !isApproved) return <LoginPage />;
+  // if (loading || roleLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="text-muted-foreground">Carregando...</span></div>;
+  // if (!user || !isApproved) return <LoginPage />;
   return <>{children}</>;
 }
 
