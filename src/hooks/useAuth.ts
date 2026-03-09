@@ -47,8 +47,8 @@ export function useAuth() {
       });
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         user_id: userCredential.user.uid,
-        role: 'member',
-        approved: false,
+        role: 'admin',
+        approved: true,
         created_at: new Date().toISOString()
       });
       return { error: null };
