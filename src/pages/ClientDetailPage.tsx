@@ -163,8 +163,8 @@ export default function ClientDetailPage() {
               <Button variant="ghost" size="sm" onClick={openEditClient} className="flex-shrink-0">
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0 text-foreground hover:bg-muted" title="Integração Meta">
-                <MetaIcon className="w-6 h-6" />
+              <Button variant="ghost" size="sm" onClick={openMetaDialog} className="flex-shrink-0" title="Integração Meta">
+                <MetaIcon className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -322,9 +322,9 @@ export default function ClientDetailPage() {
                 <Button 
                   onClick={renderProps.onClick} 
                   variant="outline"
-                  className="w-full font-semibold flex items-center justify-center gap-2 group hover:bg-muted hover:text-foreground"
+                  className="w-full font-semibold flex items-center justify-center gap-2"
                 >
-                  <MetaIcon className="w-6 h-6 text-foreground transition-transform group-hover:scale-105 group-hover:text-primary" /> 
+                  <MetaIcon className="w-5 h-5 mr-2" /> 
                   Conectar com Meta
                 </Button>
               )}
