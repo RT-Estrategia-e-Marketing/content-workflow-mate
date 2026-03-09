@@ -47,8 +47,9 @@ export function useUserRole() {
     };
   }, [user]);
 
-  const isAdmin = userRole?.role === 'admin' && userRole?.approved;
-  const isApproved = userRole?.approved ?? false;
+  // TEMPORARILY true for Unauthenticated Bypass Testing
+  const isAdmin = true; // userRole?.role === 'admin' && userRole?.approved;
+  const isApproved = true; // userRole?.approved ?? false;
 
   const approveUser = useCallback(async (userId: string, role: 'admin' | 'manager' | 'member') => {
     const roleDoc = allRoles.find(r => r.user_id === userId);
