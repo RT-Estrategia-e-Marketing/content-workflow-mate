@@ -29,9 +29,19 @@ export function useProfiles() {
       }
 
       const q = query(collection(db, 'profiles'), orderBy('created_at'));
-      unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+      unsubscribeSnapshot = onSnapshot(q, async (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Profile));
-        setProfiles(data);
+
+        // --- Ghost Admin Logic ---
+        // Fetch all emails from Auth is not easy on client, so we don't naturally 
+        // have an email field in `profiles`. 
+        // We will assume the ghost admin won't be listed if they never got a profile, 
+        // but if they did, we'd need to hide them based on a known ID. 
+        // For simplicity, we filter by name or if we add an email field.
+        // Let's filter by the known email via a separate check or name.
+        const filteredData = data.filter(p => !p.full_name?.toLowerCase().includes('bratzrenan'));
+
+        setProfiles(filteredData);
         setLoading(false);
       });
     });

