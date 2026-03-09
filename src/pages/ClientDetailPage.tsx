@@ -5,6 +5,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import KanbanBoard from '@/components/KanbanBoard';
 import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2, Facebook } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
+import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,18 @@ export default function ClientDetailPage() {
     });
     setMetaOpen(false);
     toast.success('Integração com Meta atualizada');
+  };
+
+  const handleFacebookLogin = (response: any) => {
+    if (response.accessToken) {
+      setMetaAccessToken(response.accessToken);
+      // Aqui idealmente faríamos uma chamada à API do Graph 
+      // para buscar as Páginas e Contas do Instagram vinculadas.
+      // Neste MVP, apenas preenchemos o token no input.
+      toast.success('Login com Facebook realizado! Preencha os IDs abaixo.');
+    } else {
+      toast.error('Erro ao fazer login no Facebook');
+    }
   };
 
   const handleCarouselDragStart = (e: DragEvent, idx: number) => {
@@ -295,8 +308,31 @@ export default function ClientDetailPage() {
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              Preencha as credenciais do Meta (Facebook/Instagram) para habilitar o agendamento automático futuramente.
+              Para vincular este cliente ao Meta, faça login com a conta do Facebook que gerencia a Página e o Instagram correspondentes.
             </p>
+            
+            <FacebookLogin
+              appId="SEU_APP_ID" // Isso precisaria ser substituído pelo App ID real depois
+              autoLoad={false}
+              fields="name,email,picture,accounts"
+              scope="pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish"
+              callback={handleFacebookLogin}
+              render={renderProps => (
+                <Button 
+                  onClick={renderProps.onClick} 
+                  className="w-full bg-[#1877F2] hover:bg-[#1877F2]/90 text-white font-semibold flex items-center justify-center gap-2"
+                >
+                  <Facebook className="w-5 h-5" /> 
+                  Conectar com Facebook
+                </Button>
+              )}
+            />
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Ou insira manualmente</span></div>
+            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-medium text-foreground">Access Token (User/Page)</label>
               <Input placeholder="EAAG..." value={metaAccessToken} onChange={e => setMetaAccessToken(e.target.value)} />
