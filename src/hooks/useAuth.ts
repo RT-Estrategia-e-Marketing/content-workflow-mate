@@ -45,10 +45,12 @@ export function useAuth() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
+
+      const isAdminAcc = email.toLowerCase() === 'admin@admin.com';
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         user_id: userCredential.user.uid,
-        role: 'admin',
-        approved: true,
+        role: isAdminAcc ? 'admin' : 'member',
+        approved: isAdminAcc,
         created_at: new Date().toISOString()
       });
       return { error: null };

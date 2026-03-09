@@ -21,19 +21,9 @@ import TrashPage from '@/pages/TrashPage';
 
 const queryClient = new QueryClient();
 
-import { useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { isApproved, loading: roleLoading } = useUserRole();
-
-  useEffect(() => {
-    if (user?.email === 'bratzrenan8@gmail.com') {
-      updateDoc(doc(db, 'user_roles', user.uid), { role: 'admin', approved: true }).catch(console.error);
-    }
-  }, [user]);
 
   if (loading || roleLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="text-muted-foreground">Carregando...</span></div>;
   if (!user || !isApproved) return <LoginPage />;
