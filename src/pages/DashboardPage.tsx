@@ -19,9 +19,9 @@ export default function DashboardPage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [taskTab, setTaskTab] = useState<'pending' | 'overdue' | 'done'>('pending');
 
-  const myProfile = profiles.find(p => p.user_id === user?.id);
+  const myProfile = profiles.find(p => p.user_id === user?.uid);
 
-  const myPosts = posts.filter(p => p.assignedTo === user?.id);
+  const myPosts = posts.filter(p => p.assignedTo === user?.uid);
   const pendingPosts = myPosts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled');
   const donePosts = myPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled');
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());
@@ -95,9 +95,8 @@ export default function DashboardPage() {
               <button
                 key={tab.key}
                 onClick={() => setTaskTab(tab.key)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap active:scale-95 ${
-                  taskTab === tab.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'
-                }`}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap active:scale-95 ${taskTab === tab.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'
+                  }`}
               >
                 {tab.label} {tab.count > 0 && `(${tab.count})`}
               </button>

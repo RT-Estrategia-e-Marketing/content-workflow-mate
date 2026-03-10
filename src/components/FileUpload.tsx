@@ -38,8 +38,9 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
       const publicUrl = await getDownloadURL(storageRef);
       setPreviewUrl(publicUrl);
       onUpload(publicUrl);
-    } catch (error) {
-      toast.error('Erro no upload');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(`Erro no upload: ${error.message || 'Desconhecido'}`);
     }
     setUploading(false);
   };

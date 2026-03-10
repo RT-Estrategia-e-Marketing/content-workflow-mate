@@ -103,11 +103,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
-    const myProfile = profiles.find(p => p.user_id === user?.id);
+    const myProfile = profiles.find(p => p.user_id === user?.uid);
     const newComment: PostComment = {
       id: `cm${Date.now()}`,
       author: myProfile?.full_name || 'Usuário',
-      authorId: user?.id,
+      authorId: user?.uid,
       text: commentText.trim(),
       createdAt: new Date().toISOString(),
       delegatedTo: delegateTo || undefined,
@@ -131,12 +131,12 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   };
 
   const handleAssign = (memberId: string) => {
-    const myProfile = profiles.find(p => p.user_id === user?.id);
+    const myProfile = profiles.find(p => p.user_id === user?.uid);
     const assignedProfile = profiles.find(p => p.user_id === memberId);
     assignPost(post.id, memberId);
 
     // Send notification to the assigned user
-    if (memberId !== user?.id) {
+    if (memberId !== user?.uid) {
       createNotification({
         user_id: memberId,
         post_id: post.id,
@@ -176,8 +176,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
         await uploadBytes(storageRef, file);
         const publicUrl = await getDownloadURL(storageRef);
         uploads.push(publicUrl);
-      } catch (error) {
-        toast.error(`Erro: ${file.name}`);
+      } catch (err: any) {
+        console.error('Erro ao fazer upload da imagem:', err);
+        toast.error(`Erro: ${file.name} - ${err.message || 'Desconhecido'}`);
         continue;
       }
     }

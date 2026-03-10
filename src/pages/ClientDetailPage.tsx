@@ -125,8 +125,9 @@ export default function ClientDetailPage() {
         await uploadBytes(storageRef, file);
         const publicUrl = await getDownloadURL(storageRef);
         uploads.push(publicUrl);
-      } catch (err) {
-        toast.error(`Erro: ${file.name}`);
+      } catch (err: any) {
+        console.error('Erro ao fazer upload da imagem:', err);
+        toast.error(`Erro: ${file.name} - ${err.message || 'Desconhecido'}`);
         continue;
       }
     }
