@@ -42,6 +42,11 @@ export default function ClientDetailPage() {
   const [metaIgAccountId, setMetaIgAccountId] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
 
+  // Meta Graph API states
+  const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || 'SEU_APP_ID');
+
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
   const openEditClient = () => {
@@ -60,6 +65,7 @@ export default function ClientDetailPage() {
     setMetaPageId(client.meta_page_id || '');
     setMetaIgAccountId(client.meta_ig_account_id || '');
     setMetaAccessToken(client.meta_access_token || '');
+    setMetaPages([]);
     setMetaOpen(true);
   };
 
@@ -73,15 +79,57 @@ export default function ClientDetailPage() {
     toast.success('Integração com Meta atualizada');
   };
 
-  const handleFacebookLogin = (response: any) => {
+  const handleFacebookLogin = async (response: any) => {
     if (response.accessToken) {
       setMetaAccessToken(response.accessToken);
-      // Aqui idealmente faríamos uma chamada à API do Graph 
-      // para buscar as Páginas e Contas do Instagram vinculadas.
-      // Neste MVP, apenas preenchemos o token no input.
-      toast.success('Login com Facebook realizado! Preencha os IDs abaixo.');
+      toast.success('Login com Facebook realizado! Buscando páginas...');
+
+      setLoadingPages(true);
+      try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${response.accessToken}`);
+        const data = await res.json();
+
+        if (data.data && data.data.length > 0) {
+          setMetaPages(data.data);
+          toast.success(`${data.data.length} páginas encontradas.`);
+        } else {
+          toast.info('Nenhuma página do Facebook encontrada para este usuário.');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar páginas do Meta:', err);
+        toast.error('Erro ao buscar as páginas.');
+      } finally {
+        setLoadingPages(false);
+      }
     } else {
       toast.error('Erro ao fazer login no Facebook');
+    }
+  };
+
+  const handleSelectMetaPage = async (pageId: string) => {
+    setMetaPageId(pageId);
+
+    // Find the specific page token from the selected page
+    const selectedPage = metaPages.find(p => p.id === pageId);
+    if (selectedPage && selectedPage.access_token) {
+      setMetaAccessToken(selectedPage.access_token);
+
+      // Fetch IG Account ID
+      try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${selectedPage.access_token}`);
+        const data = await res.json();
+
+        if (data.instagram_business_account?.id) {
+          setMetaIgAccountId(data.instagram_business_account.id);
+          toast.success('Conta do Instagram vinculada encontrada!');
+        } else {
+          setMetaIgAccountId('');
+          toast.info('Nenhuma Conta Profissional do Instagram vinculada à esta página.');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar IG Account:', err);
+        setMetaIgAccountId('');
+      }
     }
   };
 
@@ -187,7 +235,7 @@ export default function ClientDetailPage() {
             </p>
 
             <FacebookLogin
-              appId="SEU_APP_ID" // Isso precisaria ser substituído pelo App ID real depois
+              appId={metaAppId}
               autoLoad={false}
               fields="name,email,picture,accounts"
               scope="pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish"
@@ -199,10 +247,42 @@ export default function ClientDetailPage() {
                   className="w-full font-semibold flex items-center justify-center gap-2"
                 >
                   <MetaIcon className="w-5 h-5 mr-2" />
-                  Conectar com Meta
+                  {metaPages.length > 0 ? "Reconectar com Meta" : "Conectar com Meta"}
                 </Button>
               )}
             />
+
+            {(metaPages.length > 0 || loadingPages) && (
+              <div className="space-y-4 pt-4 border-t border-border">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">Selecionar Página do Facebook</label>
+                  <Select value={metaPageId} onValueChange={handleSelectMetaPage} disabled={loadingPages}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingPages ? "Buscando páginas..." : "Selecione uma Página"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metaPages.map(page => (
+                        <SelectItem key={page.id} value={page.id}>{page.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">Conta do Instagram Detectada (ID)</label>
+                  <Input
+                    placeholder="Nenhuma conta de Instagram detectada"
+                    value={metaIgAccountId}
+                    onChange={e => setMetaIgAccountId(e.target.value)}
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                    Se o ID acima estiver vazio, verifique se a sua Página do Facebook está conectada a uma Conta Profissional do Instagram.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
@@ -210,7 +290,7 @@ export default function ClientDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground">Access Token (User/Page)</label>
+              <label className="text-xs font-medium text-foreground">Access Token (Page)</label>
               <Input placeholder="EAAG..." value={metaAccessToken} onChange={e => setMetaAccessToken(e.target.value)} />
             </div>
             <div className="space-y-2">
