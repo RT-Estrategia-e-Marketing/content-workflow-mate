@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay,
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
+import NewPostModal from '@/components/NewPostModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STAGE_COLORS: Record<string, string> = {
@@ -21,6 +22,9 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [filterClient, setFilterClient] = useState<string>('all');
+
+  const [newPostOpen, setNewPostOpen] = useState(false);
+  const [newPostDate, setNewPostDate] = useState<string>('');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -118,21 +122,24 @@ export default function CalendarPage() {
                 key={day.toISOString()}
                 onClick={() => {
                   if (dayPosts.length > 0) {
-                    // On mobile, show day details; on desktop, keep existing behavior
+                    // On mobile, show day details; on desktop, open new post modal
                     if (window.innerWidth < 768) {
                       setSelectedDay(isSelected ? null : day);
+                    } else {
+                      setNewPostDate(format(day, 'yyyy-MM-dd'));
+                      setNewPostOpen(true);
                     }
+                  } else {
+                    setNewPostDate(format(day, 'yyyy-MM-dd'));
+                    setNewPostOpen(true);
                   }
                 }}
-                className={`min-h-[48px] md:min-h-[110px] border-b border-r border-border p-1 md:p-2 text-left transition-colors ${
-                  isToday ? 'bg-primary/5' : ''
-                } ${isSelected ? 'ring-2 ring-inset ring-primary' : ''} ${
-                  dayPosts.length > 0 ? 'md:cursor-default cursor-pointer active:bg-secondary/50' : ''
-                }`}
+                className={`min-h-[48px] md:min-h-[110px] border-b border-r border-border p-1 md:p-2 text-left transition-colors ${isToday ? 'bg-primary/5' : ''
+                  } ${isSelected ? 'ring-2 ring-inset ring-primary' : ''} ${dayPosts.length > 0 ? 'md:cursor-default cursor-pointer active:bg-secondary/50' : ''
+                  }`}
               >
-                <span className={`text-[10px] md:text-xs font-medium inline-flex items-center justify-center ${
-                  isToday ? 'bg-primary text-primary-foreground w-5 h-5 md:w-6 md:h-6 rounded-full' : 'text-muted-foreground'
-                }`}>
+                <span className={`text-[10px] md:text-xs font-medium inline-flex items-center justify-center ${isToday ? 'bg-primary text-primary-foreground w-5 h-5 md:w-6 md:h-6 rounded-full' : 'text-muted-foreground'
+                  }`}>
                   {format(day, 'd')}
                 </span>
                 {/* Mobile: dots */}
@@ -202,6 +209,14 @@ export default function CalendarPage() {
 
       {selectedPost && (
         <PostPreviewDialog post={selectedPost} open={!!selectedPostId} onOpenChange={(v) => { if (!v) setSelectedPostId(null); }} />
+      )}
+
+      {newPostOpen && (
+        <NewPostModal
+          open={newPostOpen}
+          initialDate={newPostDate}
+          onOpenChange={setNewPostOpen}
+        />
       )}
     </div>
   );
