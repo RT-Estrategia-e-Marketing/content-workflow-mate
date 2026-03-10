@@ -166,7 +166,8 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const { getClientPosts, movePost } = useApp();
-  const posts = getClientPosts(clientId);
+  const rawPosts = getClientPosts(clientId);
+  const posts = [...rawPosts].sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
   const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, stage: KanbanStage) => {
