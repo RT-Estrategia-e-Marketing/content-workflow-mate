@@ -229,13 +229,15 @@ export default function ApprovalPage() {
     updatePost(postId, { comments: [...post.comments, newComment] });
     movePost(postId, 'adjustments');
 
-    if (post.assignedTo) {
-      createNotification({
-        user_id: post.assignedTo,
-        post_id: post.id,
-        client_id: post.clientId,
-        type: 'client_adjustment',
-        message: `O cliente ${client?.name || ''} solicitou ajuste no post "${post.title}": ${feedback}`,
+    if (post.assignedTo && post.assignedTo.length > 0) {
+      post.assignedTo.forEach(memberId => {
+        createNotification({
+          user_id: memberId,
+          post_id: post.id,
+          client_id: post.clientId,
+          type: 'client_adjustment',
+          message: `O cliente ${client?.name || ''} solicitou ajuste no post "${post.title}": ${feedback}`,
+        });
       });
     }
   };

@@ -63,7 +63,7 @@ function dbPostToPost(id: string, p: DbPost): Post {
     stage: p.stage as KanbanStage,
     ideaText: p.idea_text || undefined,
     referenceLink: p.reference_link || undefined,
-    assignedTo: p.assigned_to || undefined,
+    assignedTo: Array.isArray(p.assigned_to) ? p.assigned_to : (p.assigned_to ? [p.assigned_to] : []), // Ensure assignedTo is an array
     scheduledDate: p.scheduled_date,
     approvalLink: p.approval_link || undefined,
     comments: (p.comments || []) as PostComment[],
@@ -175,12 +175,14 @@ export function useAppData() {
         stage: post.stage,
         idea_text: post.ideaText || null,
         reference_link: post.referenceLink || null,
-        assigned_to: post.assignedTo || null,
+        assigned_to: post.assignedTo || [], // Ensure assignedTo is an array
         scheduled_date: post.scheduledDate,
+        approval_link: null,
+        comments: [],
         created_at: new Date().toISOString()
       };
       const docRef = await addDoc(collection(db, 'posts'), newPostData);
-      return dbPostToPost(docRef.id, newPostData as DbPost);
+      return dbPostToPost(docRef.id, newPostData as unknown as DbPost);
     } catch (error) {
       toast.error('Erro ao criar post');
       return null;
@@ -199,7 +201,7 @@ export function useAppData() {
     if (data.stage !== undefined) update.stage = data.stage;
     if (data.ideaText !== undefined) update.idea_text = data.ideaText;
     if (data.referenceLink !== undefined) update.reference_link = data.referenceLink;
-    if (data.assignedTo !== undefined) update.assigned_to = data.assignedTo;
+    if (data.assignedTo !== undefined) update.assigned_to = data.assignedTo; // assignedTo is already an array
     if (data.scheduledDate !== undefined) update.scheduled_date = data.scheduledDate;
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
     if (data.comments !== undefined) update.comments = data.comments;

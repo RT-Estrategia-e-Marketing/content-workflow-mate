@@ -49,7 +49,8 @@ function PostCard({ post }: PostCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const { profiles } = useProfiles();
-  const assigned = profiles.find(m => m.user_id === post.assignedTo);
+  const assignedList = post.assignedTo || [];
+  const assignedProfiles = profiles.filter(m => assignedList.includes(m.user_id));
 
   const allImages = (post.type === 'carousel' || post.type === 'story') && post.images?.length
     ? post.images.filter(Boolean)
@@ -150,8 +151,10 @@ function PostCard({ post }: PostCardProps) {
           </button>
         )}
 
-        {assigned && (
-          <p className="text-[10px] text-muted-foreground mt-1">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>
+        {assignedProfiles.length > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-1">
+            👤 {assignedProfiles.map(p => `${p.full_name} · ${p.job_title || p.priority}`).join(', ')}
+          </p>
         )}
       </div>
 

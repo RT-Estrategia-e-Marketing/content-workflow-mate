@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   const myProfile = profiles.find(p => p.user_id === user?.uid);
 
-  const myPosts = posts.filter(p => p.assignedTo === user?.uid);
+  const myPosts = posts.filter(p => p.assignedTo && p.assignedTo.includes(user?.uid || ''));
   const pendingPosts = myPosts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled');
   const donePosts = myPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled');
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());

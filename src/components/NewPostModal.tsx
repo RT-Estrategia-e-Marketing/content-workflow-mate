@@ -13,6 +13,7 @@ import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
 import { Plus, Upload, X, GripVertical } from 'lucide-react';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface NewPostModalProps {
     clientId?: string;
@@ -38,7 +39,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
     const [carouselImages, setCarouselImages] = useState<string[]>([]);
     const [reelsCover, setReelsCover] = useState('');
     const [reelsVideo, setReelsVideo] = useState('');
-    const [assignedTo, setAssignedTo] = useState('');
+    const [assignedTo, setAssignedTo] = useState<string[]>([]);
     const [dragIdx, setDragIdx] = useState<number | null>(null);
     const multiFileRef = useRef<HTMLInputElement>(null);
 
@@ -111,14 +112,14 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             platform,
             stage: 'content',
             scheduledDate: date || new Date().toISOString().split('T')[0],
-            assignedTo: assignedTo || undefined
+            assignedTo: assignedTo.length > 0 ? assignedTo : undefined
         });
 
         // Reset form
         setTitle(''); setCaption(''); setDate(''); setMainImage('');
         setIdeaText(''); setReferenceLink('');
         setCarouselImages([]); setReelsCover(''); setReelsVideo('');
-        setAssignedTo('');
+        setAssignedTo([]);
         onOpenChange(false);
     };
 
@@ -204,13 +205,13 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                     )}
                     <DatePicker value={date} onChange={setDate} />
                     <div>
-                        <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-                        <Select value={assignedTo} onValueChange={setAssignedTo}>
-                            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
-                            <SelectContent>
-                                {profiles.map(m => <SelectItem key={m.user_id} value={m.user_id} className="text-xs">{m.full_name} · {m.job_title || m.priority}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <p className="text-xs text-muted-foreground font-medium mb-1">Responsáveis</p>
+                        <MultiSelect
+                            options={profiles.map(m => ({ value: m.user_id, label: m.full_name }))}
+                            selected={assignedTo}
+                            onChange={setAssignedTo}
+                            placeholder="Selecionar responsáveis"
+                        />
                     </div>
                     <Button onClick={handleAdd} className="w-full">Criar Post</Button>
                 </div>

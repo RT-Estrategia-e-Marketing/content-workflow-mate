@@ -15,6 +15,7 @@ import { formatDateBR } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -82,7 +83,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
   const canMoveBack = stageIndex > 0;
   const currentStage = KANBAN_STAGES[stageIndex];
-  const assigned = profiles.find(m => m.user_id === post.assignedTo);
+
+  const assignedList = post.assignedTo || [];
+  const assignedProfiles = profiles.filter(m => assignedList.includes(m.user_id));
 
   const handleMoveForward = () => {
     const nextStage = KANBAN_STAGES[stageIndex + 1].key;
@@ -130,21 +133,26 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setDelegateTo('');
   };
 
-  const handleAssign = (memberId: string) => {
-    const myProfile = profiles.find(p => p.user_id === user?.uid);
-    const assignedProfile = profiles.find(p => p.user_id === memberId);
-    assignPost(post.id, memberId);
+  const handleAssignMultiple = (userIds: string[]) => {
+    updatePost(post.id, { assignedTo: userIds });
+    toast.success('Responsáveis atualizados!');
 
-    // Send notification to the assigned user
-    if (memberId !== user?.uid) {
-      createNotification({
-        user_id: memberId,
-        post_id: post.id,
-        client_id: post.clientId,
-        type: 'delegation',
-        message: `${myProfile?.full_name || 'Alguém'} atribuiu o post "${post.title}" para você`,
-      });
-    }
+    // Send notification to newly assigned users (diffing old vs new)
+    const myProfile = profiles.find(p => p.user_id === user?.uid);
+    const prevAssignees = post.assignedTo || [];
+    const newAssignees = userIds.filter(id => !prevAssignees.includes(id));
+
+    newAssignees.forEach(memberId => {
+      if (memberId !== user?.uid) {
+        createNotification({
+          user_id: memberId,
+          post_id: post.id,
+          client_id: post.clientId,
+          type: 'delegation',
+          message: `${myProfile?.full_name || 'Alguém'} atribuiu o post "${post.title}" para você`,
+        });
+      }
+    });
   };
 
   // Carousel reorder
@@ -336,21 +344,12 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
               <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-                <Select value={post.assignedTo || ''} onValueChange={handleAssign}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <div className="flex items-center gap-1">
-                      <UserPlus className="w-3 h-3" />
-                      <SelectValue placeholder="Delegar" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles.map(m => (
-                      <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                        {m.full_name} · {m.job_title || m.priority}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={profiles.map(m => ({ value: m.user_id, label: m.full_name }))}
+                  selected={assignedList}
+                  onChange={handleAssignMultiple}
+                  placeholder="Selecionar responsáveis"
+                />
               </div>
 
               <div className="flex gap-2">
@@ -412,7 +411,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               )}
 
               <p className="text-xs text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</p>
-              {assigned && <p className="text-xs text-muted-foreground">👤 {assigned.full_name} · {assigned.job_title || assigned.priority}</p>}
+              {assignedProfiles.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  👤 {assignedProfiles.map(p => `${p.full_name} · ${p.job_title || p.priority}`).join(', ')}
+                </p>
+              )}
 
               {post.stage === 'client_approval' && post.approvalLink && (
                 <button onClick={handleCopyLink} className="flex items-center gap-1 text-xs text-primary hover:underline">
@@ -421,23 +424,14 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               )}
 
               {/* Assign */}
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
-                <Select value={post.assignedTo || ''} onValueChange={handleAssign}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <div className="flex items-center gap-1">
-                      <UserPlus className="w-3 h-3" />
-                      <SelectValue placeholder="Delegar" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles.map(m => (
-                      <SelectItem key={m.user_id} value={m.user_id} className="text-xs">
-                        {m.full_name} · {m.job_title || m.priority}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs font-semibold mb-2">Responsáveis</p>
+                <MultiSelect
+                  options={profiles.map(m => ({ value: m.user_id, label: m.full_name }))}
+                  selected={assignedList}
+                  onChange={handleAssignMultiple}
+                  placeholder="Selecionar responsáveis"
+                />
               </div>
 
               {/* Comments / Change Requests */}
