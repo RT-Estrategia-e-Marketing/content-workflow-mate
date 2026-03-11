@@ -87,11 +87,11 @@ export default function ClientDetailPage() {
 
   const handleDisconnectMeta = () => {
     updateClient(client.id, {
-      meta_page_id: null,
-      meta_page_name: null,
-      meta_ig_account_id: null,
-      meta_ig_account_name: null,
-      meta_access_token: null
+      meta_page_id: '',
+      meta_page_name: '',
+      meta_ig_account_id: '',
+      meta_ig_account_name: '',
+      meta_access_token: ''
     });
     setMetaPageId('');
     setMetaPageName('');
