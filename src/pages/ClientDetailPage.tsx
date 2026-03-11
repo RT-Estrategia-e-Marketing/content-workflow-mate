@@ -100,7 +100,7 @@ export default function ClientDetailPage() {
 
       setLoadingPages(true);
       try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${response.accessToken}`);
+        const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${response.accessToken}&limit=100`);
         const data = await res.json();
 
         if (data.data && data.data.length > 0) {
