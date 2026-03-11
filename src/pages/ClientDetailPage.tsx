@@ -266,6 +266,10 @@ export default function ClientDetailPage() {
               )}
             />
 
+            <p className="text-[10px] text-muted-foreground mt-2 text-center bg-muted/50 p-2 rounded-md">
+              <strong>Páginas não aparecem?</strong> Se a Página estiver em um Gerenciador de Negócios (BM), você precisa ir em <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-primary hover:underline">Configurações do Negócio</a> {'>'} Usuários {'>'} Pessoas, selecionar seu nome e clicar em "Adicionar Ativos" para atribuir a Página e a Conta do Instagram diretamente ao seu perfil do Facebook.
+            </p>
+
             {(metaPages.length > 0 || loadingPages) && (
               <div className="space-y-4 pt-4 border-t border-border">
                 <div className="space-y-2">
