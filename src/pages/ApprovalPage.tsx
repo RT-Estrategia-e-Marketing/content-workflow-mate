@@ -298,6 +298,20 @@ export default function ApprovalPage() {
 
   const handleApprovePost = (postId: string) => {
     movePost(postId, 'approved');
+    
+    // Notification for approval
+    const post = (postsFromToken.length > 0 ? globalPosts : localPosts).find(p => p.id === postId);
+    if (post && post.assignedTo && post.assignedTo.length > 0) {
+      post.assignedTo.forEach(memberId => {
+        createNotification({
+          user_id: memberId,
+          post_id: post.id,
+          client_id: post.clientId,
+          type: 'client_approval',
+          message: `O cliente ${client?.name || ''} aprovou o post "${post.title}"`,
+        });
+      });
+    }
   };
 
   const handleRequestAdjustment = (postId: string, feedback: string) => {
@@ -326,7 +340,22 @@ export default function ApprovalPage() {
   };
 
   const handleApproveAll = () => {
-    pendingPosts.forEach(p => movePost(p.id, 'approved'));
+    pendingPosts.forEach(p => {
+      movePost(p.id, 'approved');
+      
+      // Notification for approval
+      if (p.assignedTo && p.assignedTo.length > 0) {
+        p.assignedTo.forEach(memberId => {
+          createNotification({
+            user_id: memberId,
+            post_id: p.id,
+            client_id: p.clientId,
+            type: 'client_approval',
+            message: `O cliente ${client?.name || ''} aprovou o post "${p.title}"`,
+          });
+        });
+      }
+    });
     setAllApproved(true);
   };
 
