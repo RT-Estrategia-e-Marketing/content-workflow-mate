@@ -39,7 +39,9 @@ export default function ClientDetailPage() {
 
   const [metaOpen, setMetaOpen] = useState(false);
   const [metaPageId, setMetaPageId] = useState('');
+  const [metaPageName, setMetaPageName] = useState('');
   const [metaIgAccountId, setMetaIgAccountId] = useState('');
+  const [metaIgAccountName, setMetaIgAccountName] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
 
   // Meta Graph API states
@@ -63,7 +65,9 @@ export default function ClientDetailPage() {
 
   const openMetaDialog = () => {
     setMetaPageId(client.meta_page_id || '');
+    setMetaPageName(client.meta_page_name || '');
     setMetaIgAccountId(client.meta_ig_account_id || '');
+    setMetaIgAccountName(client.meta_ig_account_name || '');
     setMetaAccessToken(client.meta_access_token || '');
     setMetaPages([]);
     setMetaOpen(true);
@@ -72,7 +76,9 @@ export default function ClientDetailPage() {
   const handleSaveMeta = () => {
     updateClient(client.id, {
       meta_page_id: metaPageId.trim(),
+      meta_page_name: metaPageName.trim(),
       meta_ig_account_id: metaIgAccountId.trim(),
+      meta_ig_account_name: metaIgAccountName.trim(),
       meta_access_token: metaAccessToken.trim()
     });
     setMetaOpen(false);
@@ -82,11 +88,15 @@ export default function ClientDetailPage() {
   const handleDisconnectMeta = () => {
     updateClient(client.id, {
       meta_page_id: null,
+      meta_page_name: null,
       meta_ig_account_id: null,
+      meta_ig_account_name: null,
       meta_access_token: null
     });
     setMetaPageId('');
+    setMetaPageName('');
     setMetaIgAccountId('');
+    setMetaIgAccountName('');
     setMetaAccessToken('');
     setMetaPages([]);
     setMetaOpen(false);
@@ -127,22 +137,26 @@ export default function ClientDetailPage() {
     const selectedPage = metaPages.find(p => p.id === pageId);
     if (selectedPage && selectedPage.access_token) {
       setMetaAccessToken(selectedPage.access_token);
+      setMetaPageName(selectedPage.name);
 
       // Fetch IG Account ID
       try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${selectedPage.access_token}`);
+        const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account{id,username}&access_token=${selectedPage.access_token}`);
         const data = await res.json();
 
         if (data.instagram_business_account?.id) {
           setMetaIgAccountId(data.instagram_business_account.id);
+          setMetaIgAccountName(data.instagram_business_account.username || 'Conta Instagram');
           toast.success('Conta do Instagram vinculada encontrada!');
         } else {
           setMetaIgAccountId('');
+          setMetaIgAccountName('');
           toast.info('Nenhuma Conta Profissional do Instagram vinculada à esta página.');
         }
       } catch (err) {
         console.error('Erro ao buscar IG Account:', err);
         setMetaIgAccountId('');
+        setMetaIgAccountName('');
       }
     }
   };
@@ -244,9 +258,33 @@ export default function ClientDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <p className="text-sm text-muted-foreground">
-              Para vincular este cliente ao Meta, faça login com a conta do Facebook que gerencia a Página e o Instagram correspondentes.
-            </p>
+            {client.meta_page_name && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <MetaIcon className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-sm truncate">Conectado ao Meta</p>
+                  <p className="text-muted-foreground text-xs truncate mt-0.5">
+                    <strong>Página:</strong> {client.meta_page_name}
+                  </p>
+                  {client.meta_ig_account_name && (
+                    <p className="text-muted-foreground text-xs truncate mt-0.5">
+                      <strong>Instagram:</strong> @{client.meta_ig_account_name}
+                    </p>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleDisconnectMeta} className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0">
+                  Desconectar
+                </Button>
+              </div>
+            )}
+
+            {!client.meta_page_name && (
+              <p className="text-sm text-muted-foreground">
+                Para vincular este cliente ao Meta, faça login com a conta do Facebook que gerencia a Página e o Instagram correspondentes.
+              </p>
+            )}
 
             <FacebookLogin
               appId={metaAppId}
@@ -320,12 +358,7 @@ export default function ClientDetailPage() {
               <Input placeholder="178414..." value={metaIgAccountId} onChange={e => setMetaIgAccountId(e.target.value)} />
             </div>
             <div className="flex gap-2 pt-2">
-              {client.meta_access_token && (
-                <Button variant="destructive" onClick={handleDisconnectMeta} className="flex-1">
-                  Desconectar
-                </Button>
-              )}
-              <Button onClick={handleSaveMeta} className="flex-1 hover:bg-primary/90">Salvar Configurações</Button>
+              <Button onClick={handleSaveMeta} className="w-full hover:bg-primary/90">Salvar {metaPages.length > 0 ? "Seleção" : "Configurações"}</Button>
             </div>
           </div>
         </DialogContent>
