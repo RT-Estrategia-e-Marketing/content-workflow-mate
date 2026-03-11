@@ -79,6 +79,20 @@ export default function ClientDetailPage() {
     toast.success('Integração com Meta atualizada');
   };
 
+  const handleDisconnectMeta = () => {
+    updateClient(client.id, {
+      meta_page_id: null,
+      meta_ig_account_id: null,
+      meta_access_token: null
+    });
+    setMetaPageId('');
+    setMetaIgAccountId('');
+    setMetaAccessToken('');
+    setMetaPages([]);
+    setMetaOpen(false);
+    toast.success('Cliente desconectado do Meta');
+  };
+
   const handleFacebookLogin = async (response: any) => {
     if (response.accessToken) {
       setMetaAccessToken(response.accessToken);
@@ -247,7 +261,7 @@ export default function ClientDetailPage() {
                   className="w-full font-semibold flex items-center justify-center gap-2"
                 >
                   <MetaIcon className="w-5 h-5 mr-2" />
-                  {metaPages.length > 0 ? "Reconectar com Meta" : "Conectar com Meta"}
+                  {metaPages.length > 0 || metaAccessToken ? "Reconectar com Meta" : "Conectar com Meta"}
                 </Button>
               )}
             />
@@ -301,7 +315,14 @@ export default function ClientDetailPage() {
               <label className="text-xs font-medium text-foreground">ID da Conta Profissional (Instagram)</label>
               <Input placeholder="178414..." value={metaIgAccountId} onChange={e => setMetaIgAccountId(e.target.value)} />
             </div>
-            <Button onClick={handleSaveMeta} className="w-full hover:bg-primary/90">Salvar Configurações</Button>
+            <div className="flex gap-2 pt-2">
+              {client.meta_access_token && (
+                <Button variant="destructive" onClick={handleDisconnectMeta} className="flex-1">
+                  Desconectar
+                </Button>
+              )}
+              <Button onClick={handleSaveMeta} className="flex-1 hover:bg-primary/90">Salvar Configurações</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
