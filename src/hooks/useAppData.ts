@@ -5,7 +5,7 @@ import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteD
 import { onAuthStateChanged } from 'firebase/auth';
 import { toast } from 'sonner';
 
-interface DbClient {
+export interface DbClient {
   id: string;
   name: string;
   logo: string;
@@ -18,7 +18,7 @@ interface DbClient {
   meta_ig_account_name?: string;
 }
 
-interface DbPost {
+export interface DbPost {
   id: string;
   client_id: string;
   title: string;
@@ -38,7 +38,7 @@ interface DbPost {
   created_at: string;
 }
 
-function dbClientToClient(id: string, c: DbClient): Client {
+export function dbClientToClient(id: string, c: DbClient): Client {
   return {
     id: id, name: c.name, logo: c.logo, color: c.color, postsCount: 0,
     meta_access_token: c.meta_access_token,
@@ -49,7 +49,7 @@ function dbClientToClient(id: string, c: DbClient): Client {
   };
 }
 
-function dbPostToPost(id: string, p: DbPost): Post {
+export function dbPostToPost(id: string, p: DbPost): Post {
   return {
     id: id,
     clientId: p.client_id,
@@ -83,9 +83,16 @@ export function useAppData() {
     let unsubscribeClients: (() => void) | null = null;
     let unsubscribePosts: (() => void) | null = null;
 
-    const setupSubscriptions = () => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (unsubscribeClients) unsubscribeClients();
       if (unsubscribePosts) unsubscribePosts();
+
+      if (!user) {
+        setClients([]);
+        setAllPosts([]);
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
 
@@ -108,10 +115,6 @@ export function useAppData() {
         console.error("Error fetching posts:", error);
         if (auth.currentUser) toast.error("Erro ao carregar posts");
       });
-    };
-
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setupSubscriptions();
     });
 
     return () => {
@@ -262,7 +265,15 @@ export function useAppData() {
 
   const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
     const post = allPosts.find(p => p.id === postId);
-    if (!post) return;
+    
+    // If post not in global list (anonymous user), we can still move to approved/adjustments
+    if (!post) {
+      if (newStage === 'approved' || newStage === 'adjustments') {
+        await updateDoc(doc(db, 'posts', postId), { stage: newStage });
+        return;
+      }
+      return;
+    }
 
     const update: Record<string, any> = { stage: newStage };
 

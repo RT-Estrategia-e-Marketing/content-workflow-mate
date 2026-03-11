@@ -1,12 +1,15 @@
 import { useParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook, ChevronLeft, ChevronRight, Smartphone, Heart, Send as SendIcon, Bookmark, MoreHorizontal, CheckCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { formatDateBR } from '@/lib/utils';
-import { Post } from '@/lib/types';
+import { Post, Client } from '@/lib/types';
 import { useNotifications } from '@/hooks/useNotifications';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { dbPostToPost, dbClientToClient, DbPost, DbClient } from '@/hooks/useAppData';
 
 function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdjustment }: {
   post: Post;
@@ -181,11 +184,62 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
 
 export default function ApprovalPage() {
   const { token } = useParams<{ token: string }>();
-  const { posts, clients, loading, movePost, updatePost } = useApp();
+  const { posts: globalPosts, clients: globalClients, loading: globalLoading, movePost, updatePost } = useApp();
   const { createNotification } = useNotifications();
   const [allApproved, setAllApproved] = useState(false);
 
-  if (loading) {
+  const [localPosts, setLocalPosts] = useState<Post[]>([]);
+  const [localClient, setLocalClient] = useState<Client | null>(null);
+  const [localLoading, setLocalLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchApprovalData() {
+      if (!token) return;
+      
+      try {
+        setLocalLoading(true);
+        // Fetch posts by token
+        const postsQuery = query(collection(db, 'posts'), where('approval_link', '==', token));
+        const postsSnapshot = await getDocs(postsQuery);
+        const fetchedPosts = postsSnapshot.docs.map(d => dbPostToPost(d.id, d.data() as DbPost));
+        
+        const filteredPosts = fetchedPosts.filter(p => 
+          p.stage === 'client_approval' || 
+          p.stage === 'approved' || 
+          p.stage === 'scheduled' || 
+          p.stage === 'adjustments'
+        );
+
+        setLocalPosts(filteredPosts);
+
+        if (filteredPosts.length > 0) {
+          // Fetch client
+          const clientDoc = await getDoc(doc(db, 'clients', filteredPosts[0].clientId));
+          if (clientDoc.exists()) {
+            setLocalClient(dbClientToClient(clientDoc.id, clientDoc.data() as DbClient));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching approval data:", error);
+      } finally {
+        setLocalLoading(false);
+      }
+    }
+
+    fetchApprovalData();
+  }, [token]);
+
+  // Use global data if available (logged-in admin), otherwise use local data
+  const postsFromToken = globalPosts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
+  
+  const displayPosts = postsFromToken.length > 0 ? postsFromToken : localPosts;
+  const client = postsFromToken.length > 0 
+    ? globalClients.find(c => c.id === postsFromToken[0].clientId) 
+    : localClient;
+  
+  const isLoading = globalLoading && displayPosts.length === 0 && localLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -195,10 +249,7 @@ export default function ApprovalPage() {
     );
   }
 
-  const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
-  const client = approvalPosts.length > 0 ? clients.find(c => c.id === approvalPosts[0].clientId) : null;
-
-  if (approvalPosts.length === 0) {
+  if (displayPosts.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -209,7 +260,7 @@ export default function ApprovalPage() {
     );
   }
 
-  if (allApproved || approvalPosts.every(p => p.stage === 'approved' || p.stage === 'scheduled')) {
+  if (allApproved || displayPosts.every(p => p.stage === 'approved' || p.stage === 'scheduled')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center animate-slide-in">
@@ -221,14 +272,14 @@ export default function ApprovalPage() {
     );
   }
 
-  const pendingPosts = approvalPosts.filter(p => p.stage === 'client_approval');
+  const pendingPosts = displayPosts.filter(p => p.stage === 'client_approval');
 
   const handleApprovePost = (postId: string) => {
     movePost(postId, 'approved');
   };
 
   const handleRequestAdjustment = (postId: string, feedback: string) => {
-    const post = posts.find(p => p.id === postId);
+    const post = (postsFromToken.length > 0 ? globalPosts : localPosts).find(p => p.id === postId);
     if (!post) return;
     const newComment = {
       id: `cm${Date.now()}`,
@@ -278,7 +329,7 @@ export default function ApprovalPage() {
         </div>
 
         {/* Posts */}
-        {approvalPosts.map(post => (
+        {displayPosts.map(post => (
           <InstagramMockup
             key={post.id}
             post={post}
