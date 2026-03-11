@@ -340,24 +340,7 @@ export default function ClientDetailPage() {
               </div>
             )}
 
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Ou insira manualmente</span></div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground">Access Token (Page)</label>
-              <Input placeholder="EAAG..." value={metaAccessToken} onChange={e => setMetaAccessToken(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground">ID da Página (Facebook)</label>
-              <Input placeholder="1234567890..." value={metaPageId} onChange={e => setMetaPageId(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-foreground">ID da Conta Profissional (Instagram)</label>
-              <Input placeholder="178414..." value={metaIgAccountId} onChange={e => setMetaIgAccountId(e.target.value)} />
-            </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-6">
               <Button onClick={handleSaveMeta} className="w-full hover:bg-primary/90">Salvar {metaPages.length > 0 ? "Seleção" : "Configurações"}</Button>
             </div>
           </div>
