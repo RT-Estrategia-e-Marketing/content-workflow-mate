@@ -67,7 +67,7 @@ export function dbPostToPost(id: string, p: DbPost): Post {
     scheduledDate: p.scheduled_date,
     approvalLink: p.approval_link || undefined,
     comments: (p.comments || []) as PostComment[],
-    createdAt: p.created_at.split('T')[0],
+    createdAt: p.created_at ? p.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
   };
 }
 

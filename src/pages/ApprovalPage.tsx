@@ -198,10 +198,28 @@ export default function ApprovalPage() {
       
       try {
         setLocalLoading(true);
+        console.log("Fetching data for token:", token);
+        
         // Fetch posts by token
         const postsQuery = query(collection(db, 'posts'), where('approval_link', '==', token));
         const postsSnapshot = await getDocs(postsQuery);
-        const fetchedPosts = postsSnapshot.docs.map(d => dbPostToPost(d.id, d.data() as DbPost));
+        
+        console.log("Posts found:", postsSnapshot.size);
+        
+        if (postsSnapshot.empty) {
+          console.warn("No posts found for token:", token);
+          setLocalLoading(false);
+          return;
+        }
+
+        const fetchedPosts = postsSnapshot.docs.map(d => {
+          try {
+            return dbPostToPost(d.id, d.data() as DbPost);
+          } catch (e) {
+            console.error("Error mapping post doc:", d.id, e);
+            return null;
+          }
+        }).filter(Boolean) as Post[];
         
         const filteredPosts = fetchedPosts.filter(p => 
           p.stage === 'client_approval' || 
@@ -210,6 +228,8 @@ export default function ApprovalPage() {
           p.stage === 'adjustments'
         );
 
+        console.log("Filtered posts (visible):", filteredPosts.length);
+
         setLocalPosts(filteredPosts);
 
         if (filteredPosts.length > 0) {
@@ -217,6 +237,8 @@ export default function ApprovalPage() {
           const clientDoc = await getDoc(doc(db, 'clients', filteredPosts[0].clientId));
           if (clientDoc.exists()) {
             setLocalClient(dbClientToClient(clientDoc.id, clientDoc.data() as DbClient));
+          } else {
+            console.error("Client not found for ID:", filteredPosts[0].clientId);
           }
         }
       } catch (error) {
