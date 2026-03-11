@@ -1,12 +1,14 @@
-import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform } from '@/lib/types';
+import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform, Client } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { formatDateBR } from '@/lib/utils';
-import { Image, Film, Images, Instagram, Facebook, Smartphone, ChevronLeft, ChevronRight, Link2, Copy } from 'lucide-react';
+import { MoreHorizontal, MessageSquare, Plus, PenSquare, Trash2, CalendarDays, ExternalLink, ChevronLeft, ChevronRight, Copy, Share } from 'lucide-react';
 import { useState, DragEvent } from 'react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { publishToFacebook, publishToInstagram } from '@/lib/meta-api';
+import { Image, Film, Images, Instagram, Facebook, Smartphone } from 'lucide-react';
 
 function TypeIcon({ type }: { type: string }) {
   if (type === 'reels') return <Film className="w-3 h-3" />;
@@ -31,6 +33,7 @@ function PlatformBadge({ platform }: { platform: Platform }) {
   );
 }
 
+
 const STAGE_COLORS: Record<string, string> = {
   content: 'bg-blue-400',
   design: 'bg-indigo-400',
@@ -43,12 +46,14 @@ const STAGE_COLORS: Record<string, string> = {
 
 interface PostCardProps {
   post: Post;
+  client: Client;
 }
 
-function PostCard({ post }: PostCardProps) {
+function PostCard({ post, client }: PostCardProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [slideIdx, setSlideIdx] = useState(0);
   const { profiles } = useProfiles();
+  const { movePost } = useApp();
   const assignedList = post.assignedTo || [];
   const assignedProfiles = profiles.filter(m => assignedList.includes(m.user_id));
 
@@ -63,19 +68,76 @@ function PostCard({ post }: PostCardProps) {
 
   const isVertical = post.type === 'story' || post.type === 'reels';
 
-  const lastAdjustment = post.stage === 'adjustments'
-    ? [...post.comments].reverse().find(c => c.author === 'Cliente')
-    : null;
+  const lastAdjustment = post.comments?.filter(c => c.author.includes('Cliente')).pop();
+
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handleCopyApprovalLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (post.approvalLink) {
-      const link = `${window.location.origin}/approve/${post.approvalLink}`;
-      navigator.clipboard.writeText(link).then(() => {
-        toast.success('Link de aprovação copiado!');
-      }).catch(() => {
-        toast.info(`Link: ${link}`);
-      });
+    const link = `${window.location.origin} /approve/${post.approvalLink} `;
+    navigator.clipboard.writeText(link);
+    toast.success('Link copiado!');
+  };
+
+  const handleScheduleToMeta = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!client?.meta_access_token || !client?.meta_page_id) {
+      toast.error('Este cliente não possui a integração com a Meta configurada corretamente.');
+      return;
+    }
+
+    setIsPublishing(true);
+    let successCount = 0;
+
+    // Format image/video based on post data
+    // In a real app, you'd ensure post.imageUrl is a public URL accessible by Facebook's servers
+    const isVideo = post.type === 'reels';
+    const mediaObj = {
+      imageUrl: !isVideo && post.imageUrl ? post.imageUrl : undefined,
+      videoUrl: isVideo && post.videoUrl ? post.videoUrl : undefined,
+    };
+
+    try {
+      // 1. Post to Facebook (if platform is IG_FB or Facebook only)
+      if (post.platform === 'facebook' || post.platform === 'both') {
+        toast.info('Publicando no Facebook...');
+        await publishToFacebook({
+          pageId: client.meta_page_id,
+          accessToken: client.meta_access_token,
+          caption: post.caption,
+          ...mediaObj
+        });
+        successCount++;
+        toast.success('Publicado no Facebook!');
+      }
+
+      // 2. Post to Instagram
+      if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
+        toast.info('Publicando no Instagram...');
+        await publishToInstagram({
+          pageId: client.meta_page_id,
+          igAccountId: client.meta_ig_account_id,
+          accessToken: client.meta_access_token,
+          caption: post.caption,
+          ...mediaObj
+        });
+        successCount++;
+        toast.success('Publicado no Instagram!');
+      } else if (post.platform === 'instagram' && !client.meta_ig_account_id) {
+        toast.error('Cliente sem Conta de Instagram vinculada.');
+      }
+
+      // Move post to Scheduled if at least one successful publish
+      if (successCount > 0) {
+        movePost(post.id, 'scheduled');
+        toast.success('Post movido para Agendado!');
+      }
+
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast.error(`Falha ao publicar: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -85,7 +147,7 @@ function PostCard({ post }: PostCardProps) {
         draggable
         onDragStart={handleDragStart}
         onClick={() => setPreviewOpen(true)}
-        className="w-full text-left bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing"
+        className="bg-card w-full rounded-xl p-3 border border-border shadow-sm hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group animate-fade-in touch-manipulation relative"
       >
         <div className="flex items-start justify-between mb-2">
           <h4 className="text-xs font-semibold text-card-foreground truncate flex-1">{post.title}</h4>
@@ -93,8 +155,8 @@ function PostCard({ post }: PostCardProps) {
         </div>
 
         {allImages.length > 0 ? (
-          <div className={`relative rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
-            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+          <div className={`relative rounded - md overflow - hidden bg - muted mb - 2 flex items - center justify - center ${isVertical ? 'aspect-[9/16]' : ''} `}>
+            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w - full ${isVertical ? 'h-full object-cover' : 'object-contain'} `} />
             {allImages.length > 1 && (
               <>
                 {slideIdx > 0 && (
@@ -109,14 +171,14 @@ function PostCard({ post }: PostCardProps) {
                 )}
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
                   {allImages.map((_, i) => (
-                    <div key={i} className={`w-1 h-1 rounded-full ${i === slideIdx ? 'bg-primary' : 'bg-foreground/30'}`} />
+                    <div key={i} className={`w - 1 h - 1 rounded - full ${i === slideIdx ? 'bg-primary' : 'bg-foreground/30'} `} />
                   ))}
                 </div>
               </>
             )}
           </div>
         ) : (
-          <div className={`rounded-md bg-muted flex items-center justify-center mb-2 ${isVertical ? 'aspect-[9/16]' : 'aspect-square'}`}>
+          <div className={`rounded - md bg - muted flex items - center justify - center mb - 2 ${isVertical ? 'aspect-[9/16]' : 'aspect-square'} `}>
             <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
               <TypeIcon type={post.type} />
               <span className="text-[9px]">{TypeLabel({ type: post.type })}</span>
@@ -141,7 +203,7 @@ function PostCard({ post }: PostCardProps) {
           </div>
         )}
 
-        {/* Copy approval link button */}
+        {/* Actions for specific stages */}
         {post.stage === 'client_approval' && post.approvalLink && (
           <button
             onClick={handleCopyApprovalLink}
@@ -151,9 +213,19 @@ function PostCard({ post }: PostCardProps) {
           </button>
         )}
 
+        {post.stage === 'approved' && client?.meta_access_token && client?.meta_page_id && (
+          <button
+            onClick={handleScheduleToMeta}
+            disabled={isPublishing}
+            className="mt-2 w-full py-1.5 px-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Share className="w-3 h-3" /> {isPublishing ? 'Publicando...' : 'Agendar (Meta)'}
+          </button>
+        )}
+
         {assignedProfiles.length > 0 && (
           <p className="text-[10px] text-muted-foreground mt-1">
-            👤 {assignedProfiles.map(p => `${p.full_name} · ${p.job_title || p.priority}`).join(', ')}
+            👤 {assignedProfiles.map(p => `${p.full_name} · ${p.job_title || p.priority} `).join(', ')}
           </p>
         )}
       </div>
@@ -168,8 +240,9 @@ interface KanbanBoardProps {
 }
 
 export default function KanbanBoard({ clientId }: KanbanBoardProps) {
-  const { getClientPosts, movePost } = useApp();
+  const { getClientPosts, movePost, clients } = useApp();
   const rawPosts = getClientPosts(clientId);
+  const client = clients.find(c => c.id === clientId);
   const posts = [...rawPosts].sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
   const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
 
@@ -190,7 +263,6 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
 
   return (
     <div>
-      {/* Legend */}
       <div className="flex items-center gap-3 flex-wrap mb-3">
         {KANBAN_STAGES.map(s => (
           <span key={s.key} className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -212,8 +284,8 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 onDragOver={(e) => handleDragOver(e, stage.key)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.key)}
-                className={`min-w-[240px] sm:min-w-[280px] w-[240px] sm:w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-2 sm:p-3 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
-                  }`}
+                className={`min - w - [240px] sm: min - w - [280px] w - [240px] sm: w - [280px] flex - shrink - 0 rounded - xl bg - muted / 50 border - 2 border - dashed p - 2 sm: p - 3 transition - all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
+                  } `}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -226,7 +298,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 </div>
                 <div className="space-y-3">
                   {stagePosts.map(post => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard key={post.id} post={post} client={client!} />
                   ))}
                   {stagePosts.length === 0 && (
                     <p className="text-[10px] text-muted-foreground/50 text-center py-8">
