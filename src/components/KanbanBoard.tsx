@@ -147,7 +147,7 @@ function PostCard({ post, client }: PostCardProps) {
         draggable
         onDragStart={handleDragStart}
         onClick={() => setPreviewOpen(true)}
-        className="bg-card w-full rounded-xl p-3 border border-border shadow-sm hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group animate-fade-in touch-manipulation relative"
+        className="w-full text-left bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing relative"
       >
         <div className="flex items-start justify-between mb-2">
           <h4 className="text-xs font-semibold text-card-foreground truncate flex-1">{post.title}</h4>
@@ -155,8 +155,8 @@ function PostCard({ post, client }: PostCardProps) {
         </div>
 
         {allImages.length > 0 ? (
-          <div className={`relative rounded - md overflow - hidden bg - muted mb - 2 flex items - center justify - center ${isVertical ? 'aspect-[9/16]' : ''} `}>
-            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w - full ${isVertical ? 'h-full object-cover' : 'object-contain'} `} />
+          <div className={`relative rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
+            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
             {allImages.length > 1 && (
               <>
                 {slideIdx > 0 && (
@@ -171,14 +171,14 @@ function PostCard({ post, client }: PostCardProps) {
                 )}
                 <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
                   {allImages.map((_, i) => (
-                    <div key={i} className={`w - 1 h - 1 rounded - full ${i === slideIdx ? 'bg-primary' : 'bg-foreground/30'} `} />
+                    <div key={i} className={`w-1 h-1 rounded-full ${i === slideIdx ? 'bg-primary' : 'bg-foreground/30'}`} />
                   ))}
                 </div>
               </>
             )}
           </div>
         ) : (
-          <div className={`rounded - md bg - muted flex items - center justify - center mb - 2 ${isVertical ? 'aspect-[9/16]' : 'aspect-square'} `}>
+          <div className={`rounded-md bg-muted flex items-center justify-center mb-2 ${isVertical ? 'aspect-[9/16]' : 'aspect-square'}`}>
             <div className="flex flex-col items-center gap-1 text-muted-foreground/40">
               <TypeIcon type={post.type} />
               <span className="text-[9px]">{TypeLabel({ type: post.type })}</span>
@@ -284,8 +284,8 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 onDragOver={(e) => handleDragOver(e, stage.key)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.key)}
-                className={`min - w - [240px] sm: min - w - [280px] w - [240px] sm: w - [280px] flex - shrink - 0 rounded - xl bg - muted / 50 border - 2 border - dashed p - 2 sm: p - 3 transition - all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
-                  } `}
+                className={`min-w-[240px] sm:min-w-[280px] w-[240px] sm:w-[280px] flex-shrink-0 rounded-xl bg-muted/50 border-2 border-dashed p-2 sm:p-3 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
