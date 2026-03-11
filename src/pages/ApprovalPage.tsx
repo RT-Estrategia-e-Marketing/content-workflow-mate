@@ -181,9 +181,19 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
 
 export default function ApprovalPage() {
   const { token } = useParams<{ token: string }>();
-  const { posts, clients, movePost, updatePost } = useApp();
+  const { posts, clients, loading, movePost, updatePost } = useApp();
   const { createNotification } = useNotifications();
   const [allApproved, setAllApproved] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 animate-pulse">Carregando posts...</p>
+        </div>
+      </div>
+    );
+  }
 
   const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   const client = approvalPosts.length > 0 ? clients.find(c => c.id === approvalPosts[0].clientId) : null;

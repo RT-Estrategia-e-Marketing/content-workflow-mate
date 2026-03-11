@@ -89,6 +89,7 @@ export function useAppData() {
       console.error("Error fetching clients:", error);
       // If we're not logged in, we might not have permission to see ALL clients, 
       // but the snapshot may still trigger or we handle it gracefully.
+      setLoading(false);
       if (auth.currentUser) toast.error("Erro ao carregar clientes");
     });
 
@@ -264,7 +265,9 @@ export function useAppData() {
 
     if (newStage === 'client_approval') {
       const existingToken = allPosts.find(
-        other => other.clientId === post.clientId && other.stage === 'client_approval' && other.approvalLink
+        other => other.clientId === post.clientId && 
+        ['client_approval', 'adjustments', 'approved', 'scheduled'].includes(other.stage) && 
+        other.approvalLink
       )?.approvalLink;
       const token = existingToken || `${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
       update.approval_link = token;
