@@ -265,10 +265,12 @@ export function useAppData() {
 
   const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
     const post = allPosts.find(p => p.id === postId);
+    console.log(`Moving post ${postId} to stage ${newStage}`, { found: !!post });
     
     // If post not in global list (anonymous user), we can still move to approved/adjustments
     if (!post) {
       if (newStage === 'approved' || newStage === 'adjustments') {
+        console.log(`Anonymous move to ${newStage} for post ${postId}`);
         await updateDoc(doc(db, 'posts', postId), { stage: newStage });
         return;
       }
@@ -283,8 +285,13 @@ export function useAppData() {
         ['client_approval', 'adjustments', 'approved', 'scheduled'].includes(other.stage) && 
         other.approvalLink
       )?.approvalLink;
+      
+      console.log(`Stage is client_approval. Existing token for client ${post.clientId}: ${existingToken}`);
+      
       const token = existingToken || `${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
       update.approval_link = token;
+
+      console.log(`Final token assigned: ${token}`);
 
       const link = `${window.location.origin}/approve/${token}`;
       navigator.clipboard.writeText(link).then(() => {
