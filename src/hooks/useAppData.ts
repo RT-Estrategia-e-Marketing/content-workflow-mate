@@ -80,41 +80,44 @@ export function useAppData() {
   const trashedPosts = allPosts.filter(p => p.stage === 'trash');
 
   useEffect(() => {
-    const clientsQuery = query(collection(db, 'clients'), orderBy('created_at'));
-    const unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
-      const cData = snapshot.docs.map(doc => dbClientToClient(doc.id, doc.data() as DbClient));
-      setClients(cData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching clients:", error);
-      // If we're not logged in, we might not have permission to see ALL clients, 
-      // but the snapshot may still trigger or we handle it gracefully.
-      setLoading(false);
-      if (auth.currentUser) toast.error("Erro ao carregar clientes");
-    });
+    let unsubscribeClients: (() => void) | null = null;
+    let unsubscribePosts: (() => void) | null = null;
 
-    const postsQuery = query(collection(db, 'posts'), orderBy('created_at'));
-    const unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
-      const pData = snapshot.docs.map(doc => dbPostToPost(doc.id, doc.data() as DbPost));
-      setAllPosts(pData);
-    }, (error) => {
-      console.error("Error fetching posts:", error);
-      if (auth.currentUser) toast.error("Erro ao carregar posts");
-    });
+    const setupSubscriptions = () => {
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribePosts) unsubscribePosts();
+
+      setLoading(true);
+
+      const clientsQuery = query(collection(db, 'clients'), orderBy('created_at'));
+      unsubscribeClients = onSnapshot(clientsQuery, (snapshot) => {
+        const cData = snapshot.docs.map(doc => dbClientToClient(doc.id, doc.data() as DbClient));
+        setClients(cData);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching clients:", error);
+        setLoading(false);
+        if (auth.currentUser) toast.error("Erro ao carregar clientes");
+      });
+
+      const postsQuery = query(collection(db, 'posts'), orderBy('created_at'));
+      unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+        const pData = snapshot.docs.map(doc => dbPostToPost(doc.id, doc.data() as DbPost));
+        setAllPosts(pData);
+      }, (error) => {
+        console.error("Error fetching posts:", error);
+        if (auth.currentUser) toast.error("Erro ao carregar posts");
+      });
+    };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // We don't clear clients/posts here anymore because anonymous 
-        // access is needed for the approval page.
-        // setLoading(false) is already called in clients snapshot
-        return;
-      }
+      setupSubscriptions();
     });
 
     return () => {
       unsubscribeAuth();
-      unsubscribeClients();
-      unsubscribePosts();
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribePosts) unsubscribePosts();
     };
   }, []);
 
