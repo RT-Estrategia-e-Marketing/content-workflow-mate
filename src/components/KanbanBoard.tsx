@@ -74,7 +74,7 @@ function PostCard({ post, client }: PostCardProps) {
 
   const handleCopyApprovalLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const link = `${window.location.origin} /approve/${post.approvalLink} `;
+    const link = `${window.location.origin}/approve/${post.approvalLink}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copiado!');
   };

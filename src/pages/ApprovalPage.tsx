@@ -35,7 +35,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
     );
   }
 
-  if (status === 'adjustment') {
+  if (post.stage === 'adjustments' || status === 'adjustment') {
     return (
       <div className="w-full max-w-[375px] mx-auto mb-6 text-center animate-slide-in py-8">
         <MessageSquare className="w-12 h-12 text-amber-500 mx-auto mb-3" />
@@ -185,7 +185,7 @@ export default function ApprovalPage() {
   const { createNotification } = useNotifications();
   const [allApproved, setAllApproved] = useState(false);
 
-  const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled'));
+  const approvalPosts = posts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   const client = approvalPosts.length > 0 ? clients.find(c => c.id === approvalPosts[0].clientId) : null;
 
   if (approvalPosts.length === 0) {
