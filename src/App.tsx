@@ -16,6 +16,8 @@ import SettingsPage from "@/pages/SettingsPage";
 import ApprovalPage from "@/pages/ApprovalPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import TermsPage from "@/pages/TermsPage";
 import NotFound from "./pages/NotFound";
 import TrashPage from '@/pages/TrashPage';
 
@@ -49,6 +51,8 @@ const App = () => (
               </Route>
               <Route path="/approve/:token" element={<ApprovalPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

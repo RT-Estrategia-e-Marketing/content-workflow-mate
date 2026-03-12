@@ -445,6 +445,19 @@ export default function SettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Footer Links (Discreet) */}
+      <div className="mt-12 pt-8 border-t border-border/50 flex flex-wrap gap-x-6 gap-y-2 opacity-50 hover:opacity-100 transition-opacity">
+        <a href="/privacy" className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline">
+          Política de Privacidade
+        </a>
+        <a href="/terms" className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline">
+          Termos de Uso
+        </a>
+        <p className="text-[10px] text-muted-foreground ml-auto">
+          © 2026 PostFlow
+        </p>
+      </div>
     </div>
   );
 }
