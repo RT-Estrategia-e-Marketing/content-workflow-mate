@@ -11,7 +11,7 @@ export default function PrivacyPage() {
         variant="ghost" 
         size="sm" 
         onClick={() => navigate(-1)} 
-        className="mb-8 hover:bg-muted"
+        className="mb-8 text-muted-foreground hover:text-foreground hover:bg-accent/50"
       >
         <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
       </Button>
