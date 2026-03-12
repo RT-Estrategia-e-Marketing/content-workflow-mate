@@ -121,12 +121,14 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             if (newPost && assignedTo.length > 0 && user) {
                 assignedTo.forEach(uid => {
                     if (uid !== user.uid) {
+                        const clientName = clients.find(c => c.id === clientId)?.name || 'Cliente';
+                        const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
                         createNotification({
                             user_id: uid,
                             post_id: newPost.id,
                             client_id: clientId,
                             type: 'delegation',
-                            message: `Atribuiu você a um novo post: ${newPost.title}`
+                            message: `${authorName} atribuiu você a um novo post: "${newPost.title}" de ${clientName}`
                         });
                     }
                 });

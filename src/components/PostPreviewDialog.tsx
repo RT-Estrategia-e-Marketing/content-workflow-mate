@@ -55,7 +55,7 @@ interface PostPreviewDialogProps {
 }
 
 export default function PostPreviewDialog({ post, open, onOpenChange }: PostPreviewDialogProps) {
-  const { movePost, assignPost, updatePost, deletePost } = useApp();
+  const { movePost, updatePost, deletePost, clients } = useApp();
   const { user } = useAuth();
   const { profiles } = useProfiles();
   const { isAdmin } = useUserRole();
@@ -93,6 +93,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     
     if (['internal_approval', 'adjustments'].includes(nextStage) && assignedList.length > 0 && user) {
       const stageLabel = KANBAN_STAGES.find(s => s.key === nextStage)?.label || nextStage;
+      const client = clients.find(c => c.id === post.clientId);
+      const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
+      
       assignedList.forEach(uid => {
         if (uid !== user.uid) {
           createNotification({
@@ -100,7 +103,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `O post "${post.title}" avançou para ${stageLabel}`,
+            message: `${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
           });
         }
       });
@@ -114,6 +117,9 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     
     if (['internal_approval', 'adjustments'].includes(prevStage) && assignedList.length > 0 && user) {
       const stageLabel = KANBAN_STAGES.find(s => s.key === prevStage)?.label || prevStage;
+      const client = clients.find(c => c.id === post.clientId);
+      const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
+
       assignedList.forEach(uid => {
         if (uid !== user.uid) {
           createNotification({
@@ -121,7 +127,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `O post "${post.title}" voltou para ${stageLabel}`,
+            message: `${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
           });
         }
       });

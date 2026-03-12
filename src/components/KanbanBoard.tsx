@@ -242,6 +242,7 @@ interface KanbanBoardProps {
 export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const { getClientPosts, movePost, clients } = useApp();
   const { user } = useAuth();
+  const { profiles } = useProfiles();
   const { createNotification } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawPosts = getClientPosts(clientId);
@@ -304,6 +305,9 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
       const post = posts.find(p => p.id === postId);
       if (post && ['internal_approval', 'adjustments'].includes(stage) && user && post.assignedTo) {
         const stageLabel = KANBAN_STAGES.find(s => s.key === stage)?.label || stage;
+        const authorProfile = profiles.find(p => p.user_id === user.uid);
+        const authorName = authorProfile?.full_name || 'Um usuário';
+        
         post.assignedTo.forEach(uid => {
           if (uid !== user.uid) {
             createNotification({
@@ -311,7 +315,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
               post_id: post.id,
               client_id: post.clientId,
               type: 'internal_review',
-              message: `O post "${post.title}" foi movido para ${stageLabel}`,
+              message: `${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
             });
           }
         });
