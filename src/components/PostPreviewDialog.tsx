@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
+import TimePicker from '@/components/TimePicker';
 import { formatDateBR } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
@@ -372,16 +373,16 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </div>
               )}
 
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-3">
                 <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Data de agendamento</p>
                   <DatePicker value={date} onChange={setDate} />
                 </div>
-                <div className="w-32">
-                  <Input 
-                    type="time" 
+                <div className="flex-1">
+                  <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Horário</p>
+                  <TimePicker 
                     value={scheduledTime} 
-                    onChange={e => setScheduledTime(e.target.value)}
-                    className="h-10"
+                    onChange={setScheduledTime}
                   />
                 </div>
               </div>

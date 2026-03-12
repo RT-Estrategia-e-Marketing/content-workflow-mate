@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PostType, Platform } from '@/lib/types';
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
+import TimePicker from '@/components/TimePicker';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
@@ -226,16 +227,16 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                             </Button>
                         </div>
                     )}
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-3">
                         <div className="flex-1">
+                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Data de agendamento</p>
                             <DatePicker value={date} onChange={setDate} />
                         </div>
-                        <div className="w-32">
-                            <Input 
-                                type="time" 
+                        <div className="flex-1">
+                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Horário</p>
+                            <TimePicker 
                                 value={scheduledTime} 
-                                onChange={e => setScheduledTime(e.target.value)}
-                                className="h-10"
+                                onChange={setScheduledTime}
                             />
                         </div>
                     </div>
