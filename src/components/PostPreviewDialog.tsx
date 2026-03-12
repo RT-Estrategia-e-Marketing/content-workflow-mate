@@ -14,7 +14,7 @@ import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import { publishToFacebook, publishToInstagram } from '@/lib/meta-api';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -618,17 +618,17 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                     size="sm" 
                     onClick={() => handlePublishToMeta(true)} 
                     disabled={isPublishing}
-                    className="flex-1"
+                    className="flex-1 h-9 text-xs"
                   >
-                    Publicar Agora
+                    <Zap className="w-3 h-3 mr-1.5 text-amber-500 fill-amber-500" /> Publicar Agora
                   </Button>
                   <Button 
                     size="sm" 
                     onClick={() => handlePublishToMeta(false)} 
                     disabled={isPublishing}
-                    className="flex-1 bg-sky-500 hover:bg-sky-600 border-none"
+                    className="flex-1 h-9 text-xs"
                   >
-                    <CalendarDays className="w-3 h-3 mr-1" /> Agendar no Meta
+                    <CalendarDays className="w-3 h-3 mr-1.5" /> Agendar no Meta
                   </Button>
                 </div>
               )}

@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDateBR } from '@/lib/utils';
-import { MoreHorizontal, MessageSquare, Plus, PenSquare, Trash2, CalendarDays, ExternalLink, ChevronLeft, ChevronRight, Copy, Share } from 'lucide-react';
+import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -240,20 +240,20 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
         )}
 
         {post.stage === 'approved' && client?.meta_access_token && client?.meta_page_id && (
-          <div className="mt-1.5 flex flex-col gap-1.5">
+          <div className="mt-2 flex flex-col gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, true); }}
               disabled={isPublishing}
-              className="w-full flex items-center justify-center gap-1 py-1 rounded bg-secondary text-[9px] font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-secondary/50 text-[10px] font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
             >
-              Publicar Agora
+              <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Publicar Agora
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, false); }}
               disabled={isPublishing}
-              className="w-full flex items-center justify-center gap-1 py-1 rounded bg-sky-500 text-[9px] font-bold text-white hover:bg-sky-600 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-primary/10 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
             >
-              <CalendarDays className="w-2.5 h-2.5" /> Agendar no Meta
+              <CalendarDays className="w-3 h-3" /> Agendar no Meta
             </button>
           </div>
         )}
