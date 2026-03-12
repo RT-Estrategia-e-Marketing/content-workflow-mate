@@ -7,14 +7,12 @@ export default function TermsPage() {
 
   return (
     <div className="min-h-screen bg-background p-6 md:p-12 max-w-3xl mx-auto">
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <button 
         onClick={() => navigate(-1)} 
-        className="mb-8 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors active:scale-95"
       >
-        <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> Voltar
+      </button>
 
       <h1 className="text-3xl font-display font-bold mb-8">Termos de Uso</h1>
       
