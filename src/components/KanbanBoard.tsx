@@ -61,7 +61,7 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
 
   const allImages = (post.type === 'carousel' || post.type === 'story') && post.images?.length
     ? post.images.filter(Boolean)
-    : post.imageUrl ? [post.imageUrl] : [];
+    : post.type === 'reels' && post.videoThumbnailUrl ? [post.videoThumbnailUrl] : (post.imageUrl ? [post.imageUrl] : []);
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('postId', post.id);
@@ -91,40 +91,57 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     setIsPublishing(true);
     let successCount = 0;
 
-    // Format image/video based on post data
-    // In a real app, you'd ensure post.imageUrl is a public URL accessible by Facebook's servers
-    const isVideo = post.type === 'reels';
-    const mediaObj = {
-      imageUrl: !isVideo && post.imageUrl ? post.imageUrl : undefined,
-      videoUrl: isVideo && post.videoUrl ? post.videoUrl : undefined,
-    };
+
+    // Calc Unix timestamp if scheduling
+    let scheduledUnix: number | undefined = undefined;
+    if (post.scheduledDate && post.scheduledTime) {
+      const dateTimeStr = `${post.scheduledDate}T${post.scheduledTime}:00`;
+      const dateObj = new Date(dateTimeStr);
+      if (!isNaN(dateObj.getTime())) {
+        scheduledUnix = Math.floor(dateObj.getTime() / 1000);
+        
+        // Meta requirement: must be between 15 mins and 75 days in future
+        const nowUnix = Math.floor(Date.now() / 1000);
+        if (scheduledUnix < nowUnix + (15 * 60)) {
+          toast.warning('O agendamento deve ser pelo menos 15 minutos no futuro. Publicando agora...');
+          scheduledUnix = undefined;
+        }
+      }
+    }
 
     try {
       // 1. Post to Facebook (if platform is IG_FB or Facebook only)
       if (post.platform === 'facebook' || post.platform === 'both') {
-        toast.info('Publicando no Facebook...');
+        toast.info(scheduledUnix ? 'Agendando no Facebook...' : 'Publicando no Facebook...');
         await publishToFacebook({
           pageId: client.meta_page_id,
           accessToken: client.meta_access_token,
           caption: post.caption,
-          ...mediaObj
+          imageUrl: post.imageUrl,
+          videoUrl: post.videoUrl,
+          scheduledPublishTime: scheduledUnix
         });
         successCount++;
-        toast.success('Publicado no Facebook!');
+        toast.success(scheduledUnix ? 'Agendado no Facebook!' : 'Publicado no Facebook!');
       }
 
       // 2. Post to Instagram
       if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
-        toast.info('Publicando no Instagram...');
+        toast.info(scheduledUnix ? 'Agendando no Instagram...' : 'Publicando no Instagram...');
         await publishToInstagram({
           pageId: client.meta_page_id,
           igAccountId: client.meta_ig_account_id,
           accessToken: client.meta_access_token,
           caption: post.caption,
-          ...mediaObj
+          imageUrl: post.imageUrl,
+          videoUrl: post.videoUrl,
+          images: post.images,
+          type: post.type,
+          videoThumbnailUrl: post.videoThumbnailUrl,
+          scheduledPublishTime: scheduledUnix
         });
         successCount++;
-        toast.success('Publicado no Instagram!');
+        toast.success(scheduledUnix ? 'Agendado no Instagram!' : 'Publicado no Instagram!');
       } else if (post.platform === 'instagram' && !client.meta_ig_account_id) {
         toast.error('Cliente sem Conta de Instagram vinculada.');
       }
@@ -198,6 +215,11 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
         {post.type !== 'story' && (
           <p className="text-[9px] text-muted-foreground line-clamp-2 mb-1">{post.caption}</p>
         )}
+
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-[8px] text-muted-foreground font-medium">📅 {formatDateBR(post.scheduledDate)}</p>
+          {post.scheduledTime && <p className="text-[8px] text-muted-foreground font-medium">⏰ {post.scheduledTime}</p>}
+        </div>
 
         {lastAdjustment && (
           <div className="mt-1 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive line-clamp-2">

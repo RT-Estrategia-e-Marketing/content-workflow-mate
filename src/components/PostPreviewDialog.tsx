@@ -68,6 +68,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [type, setType] = useState<PostType>(post.type);
   const [platform, setPlatform] = useState<Platform>(post.platform);
   const [date, setDate] = useState(post.scheduledDate);
+  const [scheduledTime, setScheduledTime] = useState(post.scheduledTime || '12:00');
   const [mainImage, setMainImage] = useState(post.imageUrl);
   const [videoUrl, setVideoUrl] = useState(post.videoUrl || '');
   const [carouselImages, setCarouselImages] = useState<string[]>(post.images || []);
@@ -233,10 +234,13 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     }
 
     updatePost(post.id, {
-      title, caption: type === 'story' ? '' : caption, type, platform, scheduledDate: date,
+      title, caption: type === 'story' ? '' : caption, type, platform, 
+      scheduledDate: date,
+      scheduledTime,
       ideaText: ideaText.trim() || undefined,
       referenceLink: referenceLink.trim() || undefined,
       imageUrl, images, videoUrl: type === 'reels' ? videoUrl : undefined,
+      videoThumbnailUrl: type === 'reels' ? imageUrl : undefined,
     });
     setEditing(false);
     toast.success('Post atualizado!');
@@ -259,6 +263,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setMainImage(post.imageUrl);
     setVideoUrl(post.videoUrl || '');
     setCarouselImages(post.images || []);
+    setScheduledTime(post.scheduledTime || '12:00');
     setEditing(false);
   };
 
@@ -367,7 +372,19 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </div>
               )}
 
-              <DatePicker value={date} onChange={setDate} />
+              <div className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <DatePicker value={date} onChange={setDate} />
+                </div>
+                <div className="w-32">
+                  <Input 
+                    type="time" 
+                    value={scheduledTime} 
+                    onChange={e => setScheduledTime(e.target.value)}
+                    className="h-10"
+                  />
+                </div>
+              </div>
 
               <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Responsável</p>
@@ -437,7 +454,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">📅 {formatDateBR(post.scheduledDate)}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <span>📅 {formatDateBR(post.scheduledDate)}</span>
+                {post.scheduledTime && <span>⏰ {post.scheduledTime}</span>}
+              </p>
               {assignedProfiles.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   👤 {assignedProfiles.map(p => `${p.full_name} · ${p.job_title || p.priority}`).join(', ')}

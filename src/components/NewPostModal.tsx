@@ -43,6 +43,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
     const [carouselImages, setCarouselImages] = useState<string[]>([]);
     const [reelsCover, setReelsCover] = useState('');
     const [reelsVideo, setReelsVideo] = useState('');
+    const [scheduledTime, setScheduledTime] = useState('12:00');
     const [assignedTo, setAssignedTo] = useState<string[]>([]);
     const [dragIdx, setDragIdx] = useState<number | null>(null);
     const multiFileRef = useRef<HTMLInputElement>(null);
@@ -116,6 +117,8 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             platform,
             stage: 'content',
             scheduledDate: date || new Date().toISOString().split('T')[0],
+            scheduledTime,
+            videoThumbnailUrl: type === 'reels' ? reelsCover : undefined,
             assignedTo: assignedTo.length > 0 ? assignedTo : undefined
         }).then(newPost => {
             if (newPost && assignedTo.length > 0 && user) {
@@ -223,7 +226,19 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                             </Button>
                         </div>
                     )}
-                    <DatePicker value={date} onChange={setDate} />
+                    <div className="flex gap-2 items-center">
+                        <div className="flex-1">
+                            <DatePicker value={date} onChange={setDate} />
+                        </div>
+                        <div className="w-32">
+                            <Input 
+                                type="time" 
+                                value={scheduledTime} 
+                                onChange={e => setScheduledTime(e.target.value)}
+                                className="h-10"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <p className="text-xs text-muted-foreground font-medium mb-1">Responsáveis</p>
                         <MultiSelect
