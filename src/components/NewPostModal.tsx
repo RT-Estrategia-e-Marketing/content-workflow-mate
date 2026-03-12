@@ -128,7 +128,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                             post_id: newPost.id,
                             client_id: clientId,
                             type: 'delegation',
-                            message: `${authorName} atribuiu você a um novo post: "${newPost.title}" de ${clientName}`
+                            message: `O usuário ${authorName} atribuiu você a um novo post: "${newPost.title}" de ${clientName}`
                         });
                     }
                 });

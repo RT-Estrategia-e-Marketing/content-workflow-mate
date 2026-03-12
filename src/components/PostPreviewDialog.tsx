@@ -103,7 +103,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
+            message: `O usuário ${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
           });
         }
       });
@@ -127,7 +127,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
+            message: `O usuário ${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
           });
         }
       });
@@ -161,7 +161,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
         post_id: post.id,
         client_id: post.clientId,
         type: 'change_request',
-        message: `${myProfile?.full_name || 'Alguém'} solicitou alteração no post "${post.title}": ${commentText.trim()}`,
+        message: `O usuário ${myProfile?.full_name || 'Alguém'} solicitou alteração no post "${post.title}": ${commentText.trim()}`,
       });
       toast.success(`Alteração delegada para ${delegatedProfile?.full_name}`);
     }
