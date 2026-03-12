@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PostFlow</title>
+    <title>PostFlow - Content Workflow</title>
+    <!-- Mobile Drag and Drop Polyfill -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-rc.0/default.css">
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-rc.0/index.min.js"></script>
+    <script>
+      // Initialize the polyfill
+      MobileDragDrop.polyfill({
+        holdToDrag: 400 // 400ms hold time to start drag, making it feel more intentional
+      });
+      // Optionally override drag image translate if needed
+      window.addEventListener('touchmove', function() {}, { passive: false });
+    </script>
+    <style>
+      /* Fix for iOS Safari to allow drag and drop */
+      .drag-over {
+        border: 2px dashed #8b5cf6 !important;
+      }
+    </style>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -84,60 +84,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [isPublishing, setIsPublishing] = useState(false);
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
-  const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
-  const canMoveBack = stageIndex > 0;
   const currentStage = KANBAN_STAGES[stageIndex];
 
   const assignedList = post.assignedTo || [];
   const assignedProfiles = profiles.filter(m => assignedList.includes(m.user_id));
-
-  const handleMoveForward = () => {
-    const nextStage = KANBAN_STAGES[stageIndex + 1].key;
-    movePost(post.id, nextStage);
-    
-    if (['internal_approval', 'adjustments'].includes(nextStage) && assignedList.length > 0 && user) {
-      const stageLabel = KANBAN_STAGES.find(s => s.key === nextStage)?.label || nextStage;
-      const client = clients.find(c => c.id === post.clientId);
-      const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
-      
-      assignedList.forEach(uid => {
-        if (uid !== user.uid) {
-          createNotification({
-            user_id: uid,
-            post_id: post.id,
-            client_id: post.clientId,
-            type: 'internal_review',
-            message: `O usuário ${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
-          });
-        }
-      });
-    }
-    onOpenChange(false);
-  };
-
-  const handleMoveBack = () => {
-    const prevStage = KANBAN_STAGES[stageIndex - 1].key;
-    movePost(post.id, prevStage);
-    
-    if (['internal_approval', 'adjustments'].includes(prevStage) && assignedList.length > 0 && user) {
-      const stageLabel = KANBAN_STAGES.find(s => s.key === prevStage)?.label || prevStage;
-      const client = clients.find(c => c.id === post.clientId);
-      const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
-
-      assignedList.forEach(uid => {
-        if (uid !== user.uid) {
-          createNotification({
-            user_id: uid,
-            post_id: post.id,
-            client_id: post.clientId,
-            type: 'internal_review',
-            message: `O usuário ${authorName} moveu o post "${post.title}" de ${client?.name || 'Cliente'} para ${stageLabel}`,
-          });
-        }
-      });
-    }
-    onOpenChange(false);
-  };
 
   const handleCopyLink = () => {
     const link = `${window.location.origin}/approve/${post.approvalLink}`;
@@ -630,19 +580,6 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </div>
               )}
 
-              {/* Stage controls */}
-              <div className="flex gap-2 pt-2 border-t border-border">
-                {canMoveBack && (
-                  <Button variant="outline" size="sm" onClick={handleMoveBack} className="flex-1">
-                    <ArrowLeft className="w-3 h-3 mr-1" /> Voltar
-                  </Button>
-                )}
-                {canMoveForward && (
-                  <Button size="sm" onClick={handleMoveForward} className="flex-1">
-                    Avançar <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                )}
-              </div>
             </div>
           )}
         </DialogContent>
