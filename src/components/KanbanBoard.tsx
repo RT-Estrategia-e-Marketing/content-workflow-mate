@@ -244,9 +244,9 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
             <button
               onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, true); }}
               disabled={isPublishing}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-secondary/50 text-[10px] font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-primary text-[10px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Publicar Agora
+              <Zap className="w-3 h-3 fill-primary-foreground" /> Publicar Agora
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, false); }}

@@ -612,24 +612,21 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
               {/* Meta Publishing */}
               {post.stage === 'approved' && (
-                <div className="flex gap-2 pt-2 border-t border-border">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-border">
+                  <button 
                     onClick={() => handlePublishToMeta(true)} 
                     disabled={isPublishing}
-                    className="flex-1 h-9 text-xs"
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
-                    <Zap className="w-3 h-3 mr-1.5 text-amber-500 fill-amber-500" /> Publicar Agora
-                  </Button>
-                  <Button 
-                    size="sm" 
+                    <Zap className="w-3.5 h-3.5 fill-primary-foreground" /> Publicar Agora
+                  </button>
+                  <button 
                     onClick={() => handlePublishToMeta(false)} 
                     disabled={isPublishing}
-                    className="flex-1 h-9 text-xs"
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-md bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
                   >
-                    <CalendarDays className="w-3 h-3 mr-1.5" /> Agendar no Meta
-                  </Button>
+                    <CalendarDays className="w-3.5 h-3.5" /> Agendar no Meta
+                  </button>
                 </div>
               )}
 
