@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Sun, Moon, UserPlus, LogOut, ShieldCheck, Clock, CheckCircle, XCircle, Trash2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useState } from 'react';
 import { db, secondaryAuth } from '@/lib/firebase';
@@ -230,11 +231,19 @@ export default function SettingsPage() {
             return (
               <div key={m.id} className="p-3 bg-secondary rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{m.full_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {isMe ? '(Você)' : ''} {m.job_title && `· ${m.job_title}`}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={m.avatar_url || ''} />
+                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-bold">
+                        {m.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{m.full_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isMe ? '(Você)' : ''} {m.job_title && `· ${m.job_title}`}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isAdmin && role && (
