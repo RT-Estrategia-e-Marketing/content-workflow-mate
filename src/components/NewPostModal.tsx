@@ -1,6 +1,8 @@
 import { useState, useRef, DragEvent } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,7 +27,9 @@ interface NewPostModalProps {
 
 export default function NewPostModal({ clientId: initialClientId, initialDate, open, onOpenChange, trigger }: NewPostModalProps) {
     const { clients, addPost } = useApp();
+    const { user } = useAuth();
     const { profiles } = useProfiles();
+    const { createNotification } = useNotifications();
 
     const [clientId, setClientId] = useState(initialClientId || '');
     const [title, setTitle] = useState('');
@@ -113,6 +117,20 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             stage: 'content',
             scheduledDate: date || new Date().toISOString().split('T')[0],
             assignedTo: assignedTo.length > 0 ? assignedTo : undefined
+        }).then(newPost => {
+            if (newPost && assignedTo.length > 0 && user) {
+                assignedTo.forEach(uid => {
+                    if (uid !== user.uid) {
+                        createNotification({
+                            user_id: uid,
+                            post_id: newPost.id,
+                            client_id: clientId,
+                            type: 'delegation',
+                            message: `Atribuiu você a um novo post: ${newPost.title}`
+                        });
+                    }
+                });
+            }
         });
 
         // Reset form

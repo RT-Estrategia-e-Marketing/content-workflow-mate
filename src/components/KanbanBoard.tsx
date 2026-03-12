@@ -3,7 +3,8 @@ import { useApp } from '@/contexts/AppContext';
 import { useProfiles } from '@/hooks/useProfiles';
 import { formatDateBR } from '@/lib/utils';
 import { MoreHorizontal, MessageSquare, Plus, PenSquare, Trash2, CalendarDays, ExternalLink, ChevronLeft, ChevronRight, Copy, Share } from 'lucide-react';
-import { useState, DragEvent } from 'react';
+import { useState, DragEvent, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -49,8 +50,7 @@ interface PostCardProps {
   client: Client;
 }
 
-function PostCard({ post, client }: PostCardProps) {
-  const [previewOpen, setPreviewOpen] = useState(false);
+function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPreview: (post: Post) => void }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const { profiles } = useProfiles();
   const { movePost } = useApp();
@@ -146,7 +146,7 @@ function PostCard({ post, client }: PostCardProps) {
       <div
         draggable
         onDragStart={handleDragStart}
-        onClick={() => setPreviewOpen(true)}
+        onClick={() => onOpenPreview(post)}
         className="w-full text-left bg-card rounded-lg p-3 shadow-sm border border-border animate-slide-in hover:shadow-md hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing relative"
       >
         <div className="flex items-start justify-between mb-2">
@@ -229,8 +229,6 @@ function PostCard({ post, client }: PostCardProps) {
           </p>
         )}
       </div>
-
-      <PostPreviewDialog post={post} open={previewOpen} onOpenChange={setPreviewOpen} />
     </>
   );
 }
@@ -241,10 +239,48 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const { getClientPosts, movePost, clients } = useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
   const rawPosts = getClientPosts(clientId);
   const client = clients.find(c => c.id === clientId);
   const posts = [...rawPosts].sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+  
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const postId = searchParams.get('postId');
+    if (postId) {
+      const post = posts.find(p => p.id === postId);
+      if (post) {
+        setSelectedPost(post);
+        setPreviewOpen(true);
+        
+        // Auto-scroll to the stage
+        setTimeout(() => {
+          const stageEl = stageRefs.current[post.stage];
+          if (stageEl) {
+            stageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+        }, 100);
+      }
+      
+      // Clear the param after opening so it doesn't re-open on refresh if closed
+      // Actually, might want to keep it if we want to share the link. 
+      // But let's clear it for a better "one-shot" experience.
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('postId');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, posts]);
+
+  const handleOpenPreview = (post: Post) => {
+    setSelectedPost(post);
+    setPreviewOpen(true);
+  };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>, stage: KanbanStage) => {
     e.preventDefault();
@@ -273,7 +309,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
       </div>
 
       <ScrollArea className="w-full">
-        <div className="flex gap-4 min-h-[600px] pb-4">
+        <div ref={scrollContainerRef} className="flex gap-4 min-h-[600px] pb-4">
           {KANBAN_STAGES.map(stage => {
             const stagePosts = posts.filter(p => p.stage === stage.key);
             const isDragOver = dragOverStage === stage.key;
@@ -281,6 +317,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
             return (
               <div
                 key={stage.key}
+                ref={el => stageRefs.current[stage.key] = el}
                 onDragOver={(e) => handleDragOver(e, stage.key)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.key)}
@@ -298,7 +335,7 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
                 </div>
                 <div className="space-y-3">
                   {stagePosts.map(post => (
-                    <PostCard key={post.id} post={post} client={client!} />
+                    <PostCard key={post.id} post={post} client={client!} onOpenPreview={handleOpenPreview} />
                   ))}
                   {stagePosts.length === 0 && (
                     <p className="text-[10px] text-muted-foreground/50 text-center py-8">
@@ -312,6 +349,17 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+
+      {selectedPost && (
+        <PostPreviewDialog 
+          post={selectedPost} 
+          open={previewOpen} 
+          onOpenChange={(open) => {
+            setPreviewOpen(open);
+            if (!open) setSelectedPost(null);
+          }} 
+        />
+      )}
     </div>
   );
 }

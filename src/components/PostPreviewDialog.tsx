@@ -90,11 +90,40 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const handleMoveForward = () => {
     const nextStage = KANBAN_STAGES[stageIndex + 1].key;
     movePost(post.id, nextStage);
+    
+    if (nextStage === 'internal_approval' && assignedList.length > 0 && user) {
+      assignedList.forEach(uid => {
+        if (uid !== user.uid) {
+          createNotification({
+            user_id: uid,
+            post_id: post.id,
+            client_id: post.clientId,
+            type: 'internal_review',
+            message: `O post "${post.title}" avançou para Aprovação Interna`,
+          });
+        }
+      });
+    }
     onOpenChange(false);
   };
 
   const handleMoveBack = () => {
-    movePost(post.id, KANBAN_STAGES[stageIndex - 1].key);
+    const prevStage = KANBAN_STAGES[stageIndex - 1].key;
+    movePost(post.id, prevStage);
+    
+    if (prevStage === 'internal_approval' && assignedList.length > 0 && user) {
+      assignedList.forEach(uid => {
+        if (uid !== user.uid) {
+          createNotification({
+            user_id: uid,
+            post_id: post.id,
+            client_id: post.clientId,
+            type: 'internal_review',
+            message: `O post "${post.title}" voltou para Aprovação Interna`,
+          });
+        }
+      });
+    }
     onOpenChange(false);
   };
 
@@ -142,20 +171,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     const prevAssignees = post.assignedTo || [];
     const newAssignees = userIds.filter(id => !prevAssignees.includes(id));
 
-    newAssignees.forEach(memberId => {
-      if (memberId !== user?.uid) {
-        createNotification({
-          user_id: memberId,
-          post_id: post.id,
-          client_id: post.clientId,
-          type: 'delegation',
-          message: `${myProfile?.full_name || 'Alguém'} atribuiu o post "${post.title}" para você`,
-        });
-      }
-    });
+    // Removed delegation notification per user request "notificar somente se foi criado ou aprovação interna"
   };
 
-  // Carousel reorder
+// Carousel reorder
   const handleCarouselDragStart = (e: DragEvent, idx: number) => {
     setDragIdx(idx);
     e.dataTransfer.effectAllowed = 'move';

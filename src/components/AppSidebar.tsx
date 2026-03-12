@@ -83,9 +83,9 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
     markAsRead(n.id);
     const post = posts.find(p => p.id === n.post_id);
     if (post) {
-      navigate(`/clients/${post.clientId}`);
-      onClose?.();
+      navigate(`/clients/${post.clientId}?postId=${post.id}`);
     }
+    onClose?.();
   };
 
   const initials = (myProfile?.full_name || user?.email || '?')

@@ -42,7 +42,7 @@ export default function DashboardPage() {
     markAsRead(n.id);
     const post = posts.find(p => p.id === n.post_id);
     if (post) {
-      navigate(`/clients/${post.clientId}`);
+      navigate(`/clients/${post.clientId}?postId=${post.id}`);
     }
   };
 
