@@ -1,6 +1,8 @@
 import { Post, KANBAN_STAGES, KanbanStage, PostType, Platform, Client } from '@/lib/types';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useNotifications } from '@/hooks/useNotifications';
 import { formatDateBR } from '@/lib/utils';
 import { MoreHorizontal, MessageSquare, Plus, PenSquare, Trash2, CalendarDays, ExternalLink, ChevronLeft, ChevronRight, Copy, Share } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
@@ -239,6 +241,8 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const { getClientPosts, movePost, clients } = useApp();
+  const { user } = useAuth();
+  const { createNotification } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawPosts = getClientPosts(clientId);
   const client = clients.find(c => c.id === clientId);
@@ -293,7 +297,26 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const handleDrop = (e: DragEvent<HTMLDivElement>, stage: KanbanStage) => {
     e.preventDefault();
     const postId = e.dataTransfer.getData('postId');
-    if (postId) movePost(postId, stage);
+    if (postId) {
+      movePost(postId, stage);
+
+      // Add Notification on Drop
+      const post = posts.find(p => p.id === postId);
+      if (post && ['internal_approval', 'adjustments'].includes(stage) && user && post.assignedTo) {
+        const stageLabel = KANBAN_STAGES.find(s => s.key === stage)?.label || stage;
+        post.assignedTo.forEach(uid => {
+          if (uid !== user.uid) {
+            createNotification({
+              user_id: uid,
+              post_id: post.id,
+              client_id: post.clientId,
+              type: 'internal_review',
+              message: `O post "${post.title}" foi movido para ${stageLabel}`,
+            });
+          }
+        });
+      }
+    }
     setDragOverStage(null);
   };
 

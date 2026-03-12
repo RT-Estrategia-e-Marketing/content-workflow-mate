@@ -91,7 +91,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     const nextStage = KANBAN_STAGES[stageIndex + 1].key;
     movePost(post.id, nextStage);
     
-    if (nextStage === 'internal_approval' && assignedList.length > 0 && user) {
+    if (['internal_approval', 'adjustments'].includes(nextStage) && assignedList.length > 0 && user) {
+      const stageLabel = KANBAN_STAGES.find(s => s.key === nextStage)?.label || nextStage;
       assignedList.forEach(uid => {
         if (uid !== user.uid) {
           createNotification({
@@ -99,7 +100,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `O post "${post.title}" avançou para Aprovação Interna`,
+            message: `O post "${post.title}" avançou para ${stageLabel}`,
           });
         }
       });
@@ -111,7 +112,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     const prevStage = KANBAN_STAGES[stageIndex - 1].key;
     movePost(post.id, prevStage);
     
-    if (prevStage === 'internal_approval' && assignedList.length > 0 && user) {
+    if (['internal_approval', 'adjustments'].includes(prevStage) && assignedList.length > 0 && user) {
+      const stageLabel = KANBAN_STAGES.find(s => s.key === prevStage)?.label || prevStage;
       assignedList.forEach(uid => {
         if (uid !== user.uid) {
           createNotification({
@@ -119,7 +121,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             post_id: post.id,
             client_id: post.clientId,
             type: 'internal_review',
-            message: `O post "${post.title}" voltou para Aprovação Interna`,
+            message: `O post "${post.title}" voltou para ${stageLabel}`,
           });
         }
       });
