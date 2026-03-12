@@ -81,7 +81,7 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     toast.success('Link copiado!');
   };
 
-  const handleScheduleToMeta = async (e: React.MouseEvent) => {
+  const handleScheduleToMeta = async (e: React.MouseEvent, publishNow: boolean = false) => {
     e.stopPropagation();
     if (!client?.meta_access_token || !client?.meta_page_id) {
       toast.error('Este cliente não possui a integração com a Meta configurada corretamente.');
@@ -94,7 +94,7 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
 
     // Calc Unix timestamp if scheduling
     let scheduledUnix: number | undefined = undefined;
-    if (post.scheduledDate && post.scheduledTime) {
+    if (!publishNow && post.scheduledDate && post.scheduledTime) {
       const dateTimeStr = `${post.scheduledDate}T${post.scheduledTime}:00`;
       const dateObj = new Date(dateTimeStr);
       if (!isNaN(dateObj.getTime())) {
@@ -112,7 +112,8 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     try {
       // 1. Post to Facebook (if platform is IG_FB or Facebook only)
       if (post.platform === 'facebook' || post.platform === 'both') {
-        toast.info(scheduledUnix ? 'Agendando no Facebook...' : 'Publicando no Facebook...');
+        const action = scheduledUnix ? 'Agendando' : 'Publicando';
+        toast.info(`${action} no Facebook...`);
         await publishToFacebook({
           pageId: client.meta_page_id,
           accessToken: client.meta_access_token,
@@ -127,7 +128,8 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
 
       // 2. Post to Instagram
       if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
-        toast.info(scheduledUnix ? 'Agendando no Instagram...' : 'Publicando no Instagram...');
+        const action = scheduledUnix ? 'Agendando' : 'Publicando';
+        toast.info(`${action} no Instagram...`);
         await publishToInstagram({
           pageId: client.meta_page_id,
           igAccountId: client.meta_ig_account_id,
@@ -238,13 +240,22 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
         )}
 
         {post.stage === 'approved' && client?.meta_access_token && client?.meta_page_id && (
-          <button
-            onClick={handleScheduleToMeta}
-            disabled={isPublishing}
-            className="mt-2 w-full py-1.5 px-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Share className="w-3 h-3" /> {isPublishing ? 'Publicando...' : 'Agendar (Meta)'}
-          </button>
+          <div className="mt-1.5 flex flex-col gap-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, true); }}
+              disabled={isPublishing}
+              className="w-full flex items-center justify-center gap-1 py-1 rounded bg-secondary text-[9px] font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
+            >
+              Publicar Agora
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleScheduleToMeta(e, false); }}
+              disabled={isPublishing}
+              className="w-full flex items-center justify-center gap-1 py-1 rounded bg-sky-500 text-[9px] font-bold text-white hover:bg-sky-600 disabled:opacity-50"
+            >
+              <CalendarDays className="w-2.5 h-2.5" /> Agendar no Meta
+            </button>
+          </div>
         )}
 
         {assignedProfiles.length > 0 && (

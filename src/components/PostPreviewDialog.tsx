@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
+import { publishToFacebook, publishToInstagram } from '@/lib/meta-api';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -80,6 +81,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [delegateTo, setDelegateTo] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const canMoveForward = stageIndex < KANBAN_STAGES.length - 1;
@@ -141,6 +143,82 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     const link = `${window.location.origin}/approve/${post.approvalLink}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copiado!');
+  };
+
+  const handlePublishToMeta = async (publishNow: boolean = false) => {
+    const client = clients.find(c => c.id === post.clientId);
+    if (!client?.meta_access_token || !client?.meta_page_id) {
+      toast.error('Este cliente não possui a integração com a Meta configurada corretamente.');
+      return;
+    }
+
+    setIsPublishing(true);
+    let successCount = 0;
+
+    // Calc Unix timestamp if scheduling
+    let scheduledUnix: number | undefined = undefined;
+    if (!publishNow && post.scheduledDate && post.scheduledTime) {
+      const dateTimeStr = `${post.scheduledDate}T${post.scheduledTime}:00`;
+      const dateObj = new Date(dateTimeStr);
+      if (!isNaN(dateObj.getTime())) {
+        scheduledUnix = Math.floor(dateObj.getTime() / 1000);
+        
+        // Meta requirement: must be between 15 mins and 75 days in future
+        const nowUnix = Math.floor(Date.now() / 1000);
+        if (scheduledUnix < nowUnix + (15 * 60)) {
+          toast.warning('O agendamento deve ser pelo menos 15 minutos no futuro. Publicando agora...');
+          scheduledUnix = undefined;
+        }
+      }
+    }
+
+    try {
+      // 1. Post to Facebook
+      if (post.platform === 'facebook' || post.platform === 'both') {
+        const action = scheduledUnix ? 'Agendando' : 'Publicando';
+        toast.info(`${action} no Facebook...`);
+        await publishToFacebook({
+          pageId: client.meta_page_id,
+          accessToken: client.meta_access_token,
+          caption: post.caption,
+          imageUrl: post.imageUrl,
+          videoUrl: post.videoUrl,
+          scheduledPublishTime: scheduledUnix
+        });
+        successCount++;
+        toast.success(scheduledUnix ? 'Agendado no Facebook!' : 'Publicado no Facebook!');
+      }
+
+      // 2. Post to Instagram
+      if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
+        const action = scheduledUnix ? 'Agendando' : 'Publicando';
+        toast.info(`${action} no Instagram...`);
+        await publishToInstagram({
+          pageId: client.meta_page_id,
+          igAccountId: client.meta_ig_account_id,
+          accessToken: client.meta_access_token,
+          caption: post.caption,
+          imageUrl: post.imageUrl,
+          videoUrl: post.videoUrl,
+          images: post.images,
+          type: post.type,
+          videoThumbnailUrl: post.videoThumbnailUrl,
+          scheduledPublishTime: scheduledUnix
+        });
+        successCount++;
+        toast.success(scheduledUnix ? 'Agendado no Instagram!' : 'Publicado no Instagram!');
+      }
+
+      if (successCount > 0) {
+        movePost(post.id, 'scheduled');
+        toast.success('Post movido para Agendado!');
+        onOpenChange(false);
+      }
+    } catch (err: any) {
+      toast.error(`Falha ao publicar: ${err.message || 'Erro desconhecido'}`);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleAddComment = () => {
@@ -528,6 +606,29 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                   </Select>
                   <Button size="sm" onClick={handleAddComment} disabled={!commentText.trim()} className="w-full">
                     <Send className="w-3 h-3 mr-1" /> Enviar
+                  </Button>
+                </div>
+              )}
+
+              {/* Meta Publishing */}
+              {post.stage === 'approved' && (
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handlePublishToMeta(true)} 
+                    disabled={isPublishing}
+                    className="flex-1"
+                  >
+                    Publicar Agora
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handlePublishToMeta(false)} 
+                    disabled={isPublishing}
+                    className="flex-1 bg-sky-500 hover:bg-sky-600 border-none"
+                  >
+                    <CalendarDays className="w-3 h-3 mr-1" /> Agendar no Meta
                   </Button>
                 </div>
               )}

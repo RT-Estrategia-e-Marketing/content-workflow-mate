@@ -14,14 +14,18 @@ interface TimePickerProps {
 export default function TimePicker({ value, onChange, className }: TimePickerProps) {
   const [open, setOpen] = useState(false);
 
+  // Split value "HH:MM"
+  const [h, m] = (value || '12:00').split(':');
+
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   const minutes = ['00', '15', '30', '45'];
 
-  const times = hours.flatMap(h => minutes.map(m => `${h}:${m}`));
+  const handleHourSelect = (hour: string) => {
+    onChange(`${hour}:${m}`);
+  };
 
-  const handleSelect = (time: string) => {
-    onChange(time);
-    setOpen(false);
+  const handleMinuteSelect = (minute: string) => {
+    onChange(`${h}:${minute}`);
   };
 
   return (
@@ -39,24 +43,43 @@ export default function TimePicker({ value, onChange, className }: TimePickerPro
           {value || <span>Selecionar horário</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[120px] p-0" align="start">
-        <ScrollArea className="h-[200px]">
-          <div className="flex flex-col p-1">
-            {times.map((t) => (
-              <Button
-                key={t}
-                variant="ghost"
-                className={cn(
-                  'justify-center text-xs h-8 font-normal',
-                  value === t && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-                )}
-                onClick={() => handleSelect(t)}
-              >
-                {t}
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="flex divide-x divide-border h-[200px]">
+          <ScrollArea className="w-16">
+            <div className="flex flex-col p-1">
+              {hours.map((hour) => (
+                <Button
+                  key={hour}
+                  variant="ghost"
+                  className={cn(
+                    'justify-center text-xs h-8 font-normal px-2',
+                    h === hour && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                  )}
+                  onClick={() => handleHourSelect(hour)}
+                >
+                  {hour}
+                </Button>
+              ))}
+            </div>
+          </ScrollArea>
+          <ScrollArea className="w-16">
+            <div className="flex flex-col p-1">
+              {minutes.map((minute) => (
+                <Button
+                  key={minute}
+                  variant="ghost"
+                  className={cn(
+                    'justify-center text-xs h-8 font-normal px-2',
+                    m === minute && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                  )}
+                  onClick={() => handleMinuteSelect(minute)}
+                >
+                  {minute}
+                </Button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
