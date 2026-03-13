@@ -1,5 +1,4 @@
 const functions = require("firebase-functions");
-const logger = require("firebase-functions/logger");
 
 /**
  * Exchanges a short-lived Meta user access token for long-lived and permanent page tokens.
@@ -18,11 +17,11 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
     const clientSecret = process.env.META_CLIENT_SECRET || (functions.config().meta ? functions.config().meta.client_secret : null);
 
     if (!clientId || !clientSecret) {
-      logger.error('Credenciais da Meta não encontradas no ambiente.');
+      functions.logger.error('Credenciais da Meta não encontradas no ambiente.');
       throw new functions.https.HttpsError('failed-precondition', 'Configuração ausente: META_CLIENT_ID ou META_CLIENT_SECRET não definidos.');
     }
 
-    logger.info('Iniciando troca de token (1st Gen) para o App ID:', clientId.substring(0, 4) + '...');
+    functions.logger.info('Iniciando troca de token (1st Gen) para o App ID:', clientId.substring(0, 4) + '...');
 
     const { default: fetch } = await import('node-fetch');
 
@@ -33,7 +32,7 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
     const longLivedUserData = await longLivedUserRes.json();
 
     if (longLivedUserData.error) {
-      logger.error('Erro Meta (User Token):', longLivedUserData.error);
+      functions.logger.error('Erro Meta (User Token):', longLivedUserData.error);
       throw new functions.https.HttpsError('internal', `Erro Meta: ${longLivedUserData.error.message}`);
     }
 
@@ -46,7 +45,7 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
     const pagesData = await pagesRes.json();
 
     if (pagesData.error) {
-      logger.error('Erro Meta (Páginas):', pagesData.error);
+      functions.logger.error('Erro Meta (Páginas):', pagesData.error);
       throw new functions.https.HttpsError('internal', `Erro Meta (Páginas): ${pagesData.error.message}`);
     }
 
@@ -56,7 +55,7 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
     };
 
   } catch (error) {
-    logger.error('Erro fatal:', error);
+    functions.logger.error('Erro fatal:', error);
     if (error instanceof functions.https.HttpsError) {
       throw error;
     }
