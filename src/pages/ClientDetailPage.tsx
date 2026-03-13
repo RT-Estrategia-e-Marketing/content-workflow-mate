@@ -301,7 +301,7 @@ export default function ClientDetailPage() {
             )}
 
             <FacebookLogin
-              appId={metaAppId}
+              appId={metaAppId && metaAppId !== 'SEU_APP_ID' ? metaAppId : '2479723212497865'}
               version="v19.0"
               autoLoad={false}
               fields="name,email,picture,accounts"
@@ -309,12 +309,21 @@ export default function ClientDetailPage() {
               callback={handleFacebookLogin}
               render={renderProps => (
                 <Button
-                  onClick={renderProps.onClick}
+                  onClick={(e) => {
+                    if (!metaAppId || metaAppId === 'SEU_APP_ID') {
+                      toast.warning("Usando ID de App padrão. Verifique seu arquivo .env");
+                    }
+                    if (renderProps.onClick) {
+                      renderProps.onClick();
+                    } else {
+                      toast.error("Erro: SDK do Facebook não carregou (renderProps.onClick ausente)");
+                    }
+                  }}
                   variant="outline"
                   className="w-full font-semibold flex items-center justify-center gap-2"
                 >
                   <MetaIcon className="w-5 h-5 mr-2" />
-                  {metaPages.length > 0 || metaAccessToken ? "Reconectar com Meta" : "Conectar com Meta"}
+                  {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
                 </Button>
               )}
             />
