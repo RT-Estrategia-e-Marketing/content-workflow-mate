@@ -9,9 +9,9 @@ const db = admin.firestore();
  */
 function translateMetaError(message) {
   if (!message) return "Erro desconhecido na Meta.";
-  if (message.includes('access token') || message.includes('permission')) return "Erro de permissão/token expirado.";
+  if (message.includes('access token') || message.includes('permission')) return `Erro de permissão/token expirado. Detalhe original: "${message}".`;
   if (message.includes('whitelist') || message.includes('capability')) {
-    return "Erro de Whitelist: Se seu App na Meta está em modo 'Live', ele bloqueia essa permissão até que você passe pelo App Review. Volte para modo 'Development' para testar.";
+    return `Erro de Whitelist/Capacidade. Detalhe original: "${message}". Dica: Se já está em modo Development, tente RE-CONECTAR sua conta Meta no painel de Clientes para atualizar o Token.`;
   }
   return message;
 }
