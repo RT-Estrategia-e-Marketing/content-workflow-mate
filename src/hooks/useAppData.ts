@@ -271,7 +271,7 @@ export function useAppData() {
     }
   }, []);
 
-  const movePost = useCallback(async (postId: string, newStage: KanbanStage) => {
+  const movePost = useCallback(async (postId: string, newStage: KanbanStage, extraData?: Partial<Post>) => {
     const post = allPosts.find(p => p.id === postId);
     console.log(`Moving post ${postId} to stage ${newStage}`, { found: !!post });
     
@@ -285,7 +285,10 @@ export function useAppData() {
       return;
     }
 
-    const update: Record<string, any> = { stage: newStage };
+    const updates: any = { stage: newStage };
+    if (extraData?.scheduledUnix) updates.scheduled_unix = extraData.scheduledUnix;
+    if (extraData?.scheduledDate) updates.scheduled_date = extraData.scheduledDate;
+    if (extraData?.scheduledTime) updates.scheduled_time = extraData.scheduledTime;
 
     if (newStage === 'client_approval') {
       const existingToken = allPosts.find(
@@ -297,7 +300,7 @@ export function useAppData() {
       console.log(`Stage is client_approval. Existing token for client ${post.clientId}: ${existingToken}`);
       
       const token = existingToken || `${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
-      update.approval_link = token;
+      updates.approval_link = token;
 
       console.log(`Final token assigned: ${token}`);
 
@@ -309,7 +312,7 @@ export function useAppData() {
       });
     }
 
-    await updateDoc(doc(db, 'posts', postId), update);
+    await updateDoc(doc(db, 'posts', postId), updates);
   }, [allPosts]);
 
   const assignPost = useCallback(async (postId: string, memberId: string) => {

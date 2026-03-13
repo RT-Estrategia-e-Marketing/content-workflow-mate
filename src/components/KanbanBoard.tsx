@@ -10,7 +10,8 @@ import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { publishToFacebook, publishToInstagram } from '@/lib/meta-api';
+import { functions } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { Image, Film, Images, Instagram, Facebook, Smartphone } from 'lucide-react';
 
 function TypeIcon({ type }: { type: string }) {
@@ -110,53 +111,32 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     }
 
     try {
-      // 1. Post to Facebook (if platform is IG_FB or Facebook only)
-      if (post.platform === 'facebook' || post.platform === 'both') {
-        const action = scheduledUnix ? 'Agendando' : 'Publicando';
-        toast.info(`${action} no Facebook...`);
-        await publishToFacebook({
-          pageId: client.meta_page_id,
-          accessToken: client.meta_access_token,
-          caption: post.caption,
-          imageUrl: post.imageUrl,
-          videoUrl: post.videoUrl,
-          scheduledPublishTime: scheduledUnix
+      if (scheduledUnix) {
+        // Agendamento Interno (PostFlow Scheduler)
+        await movePost(post.id, 'scheduled', { 
+          scheduledUnix,
+          scheduledDate: post.scheduledDate,
+          scheduledTime: post.scheduledTime
         });
-        successCount++;
-        toast.success(scheduledUnix ? 'Agendado no Facebook!' : 'Publicado no Facebook!');
+        toast.success('Post agendado no sistema PostFlow! 🚀');
+      } else {
+        // Publicação Direta (via Backend)
+        const publishPostNow = httpsCallable(functions, 'publishPostNow');
+        const result: any = await publishPostNow({ postId: post.id });
+        if (result.data.success) {
+          toast.success('Post publicado com sucesso via PostFlow! ✨');
+        } else {
+          throw new Error(result.data.message || 'Erro desconhecido');
+        }
       }
-
-      // 2. Post to Instagram
-      if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
-        const action = scheduledUnix ? 'Agendando' : 'Publicando';
-        toast.info(`${action} no Instagram...`);
-        await publishToInstagram({
-          pageId: client.meta_page_id,
-          igAccountId: client.meta_ig_account_id,
-          accessToken: client.meta_access_token,
-          caption: post.caption,
-          imageUrl: post.imageUrl,
-          videoUrl: post.videoUrl,
-          images: post.images,
-          type: post.type,
-          videoThumbnailUrl: post.videoThumbnailUrl,
-          scheduledPublishTime: scheduledUnix
-        });
-        successCount++;
-        toast.success(scheduledUnix ? 'Agendado no Instagram!' : 'Publicado no Instagram!');
-      } else if (post.platform === 'instagram' && !client.meta_ig_account_id) {
-        toast.error('Cliente sem Conta de Instagram vinculada.');
-      }
-
-      // Move post to Scheduled if at least one successful publish
-      if (successCount > 0) {
-        movePost(post.id, 'scheduled');
-        toast.success('Post movido para Agendado!');
-      }
-
     } catch (err: unknown) {
       const error = err as Error;
-      toast.error(`Falha ao publicar: ${error.message || 'Erro desconhecido'}`);
+      const msg = error.message || 'Erro ao processar publicação.';
+      if (msg.includes('whitelist')) {
+        toast.error("Erro de Whitelist: Se seu App na Meta está em modo 'Live', mude para 'Development' para testar.");
+      } else {
+        toast.error(`Falha ao publicar: ${msg}`);
+      }
     } finally {
       setIsPublishing(false);
     }
