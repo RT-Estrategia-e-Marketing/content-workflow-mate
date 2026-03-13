@@ -44,25 +44,31 @@ export default function ClientDetailPage() {
   const [metaIgAccountName, setMetaIgAccountName] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
 
-  // Meta Graph API states
   const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
   const [loadingPages, setLoadingPages] = useState(false);
   const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || '2479723212497865');
+  const [fbStatus, setFbStatus] = useState<'pending' | 'loaded' | 'error'>('pending');
 
   // Logs para depuração do SDK da Meta
   useEffect(() => {
     if (metaOpen) {
       console.log('--- Meta Login Debug ---');
-      console.log('App ID Atual:', metaAppId);
-      console.log('Ambiente:', import.meta.env.MODE);
-      console.log('URL Base:', window.location.origin);
+      console.log('App ID:', metaAppId);
+      console.log('Domínio Atual:', window.location.hostname);
       
       const checkFB = setInterval(() => {
-        if ((window as any).FB) {
-          console.log('SDK da Meta (FB) detectado no window!');
+        const fb = (window as any).FB;
+        if (fb) {
+          setFbStatus('loaded');
+          console.log('SDK da Meta (FB) carregado!');
+          fb.getLoginStatus((response: any) => {
+            console.log('Status do Login Meta:', response);
+            if (response.error) {
+              console.error('Erro no status do SDK (pode ser whitelist):', response.error);
+              setFbStatus('error');
+            }
+          });
           clearInterval(checkFB);
-        } else {
-          console.log('Aguardando SDK da Meta...');
         }
       }, 2000);
       
@@ -332,55 +338,51 @@ export default function ClientDetailPage() {
               scope="pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management"
               callback={handleFacebookLogin}
               render={renderProps => (
-                <Button
-                  onClick={() => {
-                    console.log('Botão de login clicado! Propriedades:', { metaAppId });
-                    
-                    const manualLogin = () => {
-                      if ((window as any).FB) {
-                        console.log('Tentativa de Login Manual via FB.login()...');
-                        (window as any).FB.login((resp: any) => {
-                          console.log('Resposta Login Manual:', resp);
-                          if (resp.authResponse) {
-                            handleFacebookLogin({ accessToken: resp.authResponse.accessToken });
-                          }
-                        }, { 
-                          scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management',
-                          return_scopes: true 
-                        });
-                      }
-                    };
-
-                    if (renderProps.onClick) {
-                      console.log('Chamando renderProps.onClick()...');
-                      try {
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => {
+                      if (renderProps.onClick) {
                         renderProps.onClick();
-                      } catch (e) {
-                        console.error('Erro no renderProps.onClick, tentando manual...', e);
-                        manualLogin();
+                      } else if ((window as any).FB) {
+                        (window as any).FB.login((r: any) => r.authResponse && handleFacebookLogin({ accessToken: r.authResponse.accessToken }), { scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management' });
                       }
-                    } else {
-                      console.log('renderProps.onClick ausente, tentando manual...');
-                      manualLogin();
-                    }
-                  }}
-                  variant="outline"
-                  className="w-full font-semibold flex items-center justify-center gap-2"
-                >
-                  <MetaIcon className="w-5 h-5 mr-2" />
-                  {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
-                </Button>
+                    }}
+                    variant="outline"
+                    className="w-full font-semibold flex items-center justify-center gap-2"
+                  >
+                    <MetaIcon className="w-5 h-5 mr-2" />
+                    {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
+                  </Button>
+                  
+                  {fbStatus === 'error' && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => window.location.reload()} 
+                      className="w-full text-xs text-destructive hover:bg-destructive/5"
+                    >
+                      Falha no SDK. Clique para Recarregar a Página
+                    </Button>
+                  )}
+                </div>
               )}
             />
             
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-4 text-[11px] text-amber-800">
-              <p className="font-bold mb-1">Dica de Diagnóstico:</p>
-              <p>O erro "Uncaught t" geralmente significa que o domínio <code className="bg-amber-100 px-1">rodrigotempass.com.br</code> não está cadastrado no seu App da Meta.</p>
-              <ul className="list-disc ml-4 mt-1 space-y-1">
-                <li>Acesse o <a href={`https://developers.facebook.com/apps/${metaAppId}/settings/basic/`} target="_blank" rel="noreferrer" className="underline font-bold">Painel de Desenvolvedor</a>.</li>
-                <li>Verifique se o domínio está em <strong>App Domains</strong>.</li>
-                <li>Verifique se o App está em modo <strong>Live</strong> (Produção).</li>
-              </ul>
+              <p className="font-bold mb-1 flex items-center gap-2">
+                Status do SDK Meta: 
+                <span className={`inline-block w-2 h-2 rounded-full ${fbStatus === 'loaded' ? 'bg-green-500' : fbStatus === 'error' ? 'bg-red-500' : 'bg-amber-400 animate-pulse'}`}></span>
+              </p>
+              <p className="mb-2">Se os domínios já foram salvos na Meta mas o erro persiste, tente:</p>
+              <ol className="list-decimal ml-4 space-y-1">
+                <li>Dar um **Hard Refresh** (`Cmd+Shift+R`).</li>
+                <li>Limpar os cookies do domínio `facebook.com` no seu navegador.</li>
+                <li>Verificar se o **App ID** no painel da Meta é exatamente <code className="bg-amber-100 px-1 font-bold">2479723212497865</code>.</li>
+              </ol>
+              <div className="mt-3 flex gap-2">
+                <a href={`https://developers.facebook.com/apps/${metaAppId}/settings/basic/`} target="_blank" rel="noreferrer" className="underline font-bold text-primary">Abrir Painel Meta</a>
+                <span>•</span>
+                <button onClick={() => { localStorage.removeItem('fb_js_sdk_status'); window.location.reload(); }} className="underline font-bold">Zerar Sessão Meta</button>
+              </div>
             </div>
 
             <p className="text-[10px] text-muted-foreground mt-2 text-center bg-muted/50 p-2 rounded-md">
