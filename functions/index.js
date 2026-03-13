@@ -14,37 +14,48 @@ exports.metaTokenExchange = onCall({ cors: true }, async (request) => {
     const { shortLivedToken } = request.data;
 
     if (!shortLivedToken) {
-      throw new HttpsError('invalid-argument', 'shortLivedToken is required');
+      throw new HttpsError('invalid-argument', 'O token de curta duração (shortLivedToken) é obrigatório.');
     }
 
-    const clientId = metaClientId.value();
-    const clientSecret = metaClientSecret.value();
+    let clientId, clientSecret;
+    try {
+      // Tenta ler dos Params ou do process.env (suporte ao arquivo .env)
+      clientId = process.env.META_CLIENT_ID || (metaClientId.value ? metaClientId.value() : null);
+      clientSecret = process.env.META_CLIENT_SECRET || (metaClientSecret.value ? metaClientSecret.value() : null);
+      
+      logger.info('Tentando usar App ID:', clientId ? clientId.substring(0, 4) + '...' : 'Nulo');
+    } catch (e) {
+      logger.error('Erro ao ler segredos da Meta:', e);
+    }
 
     if (!clientId || !clientSecret) {
       logger.error('Meta App credentials are not configured in Firebase');
-      throw new HttpsError('failed-precondition', 'Meta App credentials not configured');
+      throw new HttpsError('failed-precondition', 'Credenciais da Meta não encontradas no ambiente do Firebase.');
     }
 
-    logger.info('Exchanging short-lived token for long-lived token...');
+    logger.info('Iniciando troca de token para o App ID:', clientId);
 
     // Dynamic import for node-fetch as it is an ESM module
     const { default: fetch } = await import('node-fetch');
 
     // 1. Exchange short-lived User Token for a long-lived User Token (60 days)
-    const longLivedUserRes = await fetch(
-      `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`
-    );
+    const longLivedUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
+    
+    const longLivedUserRes = await fetch(longLivedUrl);
     const longLivedUserData = await longLivedUserRes.json();
 
     if (longLivedUserData.error) {
       logger.error('Meta API (User Token) Error:', longLivedUserData.error);
-      throw new HttpsError('internal', `Meta API (User Token): ${longLivedUserData.error.message}`);
+      throw new HttpsError('internal', `Erro Meta (User Token): ${longLivedUserData.error.message} (Tipo: ${longLivedUserData.error.type})`);
     }
 
     const longLivedUserToken = longLivedUserData.access_token;
+    if (!longLivedUserToken) {
+      throw new HttpsError('internal', 'Meta não retornou um access_token de longa duração.');
+    }
 
     // 2. Use long-lived User Token to get Page Access Tokens (these are usually permanent)
-    logger.info('Fetching Page Access Tokens...');
+    logger.info('Buscando contas/páginas vinculadas...');
     const pagesRes = await fetch(
       `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedUserToken}&limit=100`
     );
@@ -52,20 +63,20 @@ exports.metaTokenExchange = onCall({ cors: true }, async (request) => {
 
     if (pagesData.error) {
       logger.error('Meta API (Pages) Error:', pagesData.error);
-      throw new HttpsError('internal', `Meta API (Pages): ${pagesData.error.message}`);
+      throw new HttpsError('internal', `Erro Meta (Páginas): ${pagesData.error.message}`);
     }
 
     // Return the list of pages with their long-lived/permanent access tokens
     return {
-      data: pagesData.data,
-      message: 'Tokens exchanged successfully'
+      data: pagesData.data || [],
+      message: 'Tokens trocados com sucesso'
     };
 
   } catch (error) {
-    logger.error('Error in metaTokenExchange:', error);
+    logger.error('Erro fatal em metaTokenExchange:', error);
     if (error instanceof HttpsError) {
       throw error;
     }
-    throw new HttpsError('internal', error.message || 'Internal Server Error');
+    throw new HttpsError('internal', `Erro Interno: ${error.message || 'Falha desconhecida no servidor'}`);
   }
 });
