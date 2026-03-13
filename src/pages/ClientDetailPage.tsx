@@ -5,7 +5,6 @@ import { useUserRole } from '@/hooks/useUserRole';
 import KanbanBoard from '@/components/KanbanBoard';
 import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2 } from 'lucide-react';
 import { useState, useRef, DragEvent, useEffect } from 'react';
-import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -49,32 +48,49 @@ export default function ClientDetailPage() {
   const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || '2479723212497865');
   const [fbStatus, setFbStatus] = useState<'pending' | 'loaded' | 'error'>('pending');
 
-  // Logs para depuração do SDK da Meta
+  // Load and Init Meta SDK manually to avoid library crashes
   useEffect(() => {
-    if (metaOpen) {
-      console.log('--- Meta Login Debug ---');
-      console.log('App ID:', metaAppId);
-      console.log('Domínio Atual:', window.location.hostname);
-      
-      const checkFB = setInterval(() => {
-        const fb = (window as any).FB;
-        if (fb) {
-          setFbStatus('loaded');
-          console.log('SDK da Meta (FB) carregado!');
-          fb.getLoginStatus((response: any) => {
-            console.log('Status do Login Meta:', response);
-            if (response.error) {
-              console.error('Erro no status do SDK (pode ser whitelist):', response.error);
-              setFbStatus('error');
-            }
-          });
-          clearInterval(checkFB);
-        }
-      }, 2000);
-      
-      return () => clearInterval(checkFB);
+    const initFB = () => {
+      const fb = (window as any).FB;
+      if (fb) {
+        fb.init({
+          appId: metaAppId,
+          cookie: true,
+          xfbml: true,
+          version: 'v19.0'
+        });
+        setFbStatus('loaded');
+      }
+    };
+
+    if (!(window as any).FB) {
+      const script = document.createElement('script');
+      script.src = "https://connect.facebook.net/pt_BR/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.onload = initFB;
+      script.onerror = () => setFbStatus('error');
+      document.head.appendChild(script);
+    } else {
+      initFB();
     }
-  }, [metaOpen, metaAppId]);
+  }, [metaAppId]);
+
+  const handleManualLogin = () => {
+    const fb = (window as any).FB;
+    if (!fb) {
+      toast.error("Motor de login não carregou.");
+      return;
+    }
+    fb.login((r: any) => {
+      if (r.authResponse) {
+        handleFacebookLogin({ accessToken: r.authResponse.accessToken });
+      }
+    }, { 
+      scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management'
+    });
+  };
 
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
@@ -330,49 +346,26 @@ export default function ClientDetailPage() {
               </p>
             )}
 
-            <FacebookLogin
-              appId={metaAppId && metaAppId !== 'SEU_APP_ID' ? metaAppId : '2479723212497865'}
-              version="v19.0"
-              autoLoad={false}
-              fields="name,email,picture,accounts"
-              scope="pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management"
-              callback={handleFacebookLogin}
-              render={renderProps => (
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => {
-                      const fb = (window as any).FB;
-                      if (!fb) {
-                        toast.error("SDK da Meta não carregou.");
-                        return;
-                      }
-                      fb.login((r: any) => {
-                        if (r.authResponse) {
-                          handleFacebookLogin({ accessToken: r.authResponse.accessToken });
-                        }
-                      }, { 
-                        scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management'
-                      });
-                    }}
-                    variant="outline"
-                    className="w-full font-semibold flex items-center justify-center gap-2"
-                  >
-                    <MetaIcon className="w-5 h-5 mr-2" />
-                    {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
-                  </Button>
-                  
-                  {fbStatus === 'error' && (
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => window.location.reload()} 
-                      className="w-full text-xs text-destructive hover:bg-destructive/5"
-                    >
-                      Falha no SDK. Clique para Recarregar a Página
-                    </Button>
-                  )}
-                </div>
+            <div className="space-y-3">
+              <Button
+                onClick={handleManualLogin}
+                variant="outline"
+                className="w-full font-semibold flex items-center justify-center gap-2"
+              >
+                <MetaIcon className="w-5 h-5 mr-2" />
+                {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
+              </Button>
+              
+              {fbStatus === 'error' && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => window.location.reload()} 
+                  className="w-full text-xs text-destructive hover:bg-destructive/5"
+                >
+                  Falha no SDK. Clique para Recarregar a Página
+                </Button>
               )}
-            />
+            </div>
             
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-4 text-[11px] text-amber-800">
               <p className="font-bold mb-1 flex items-center gap-2">
