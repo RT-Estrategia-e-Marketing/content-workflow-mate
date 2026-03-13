@@ -135,8 +135,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
         const nowUnix = Math.floor(now.getTime() / 1000);
         
-        if (scheduledUnix < nowUnix + (10 * 60)) {
-          toast.warning(`Horário muito próximo (${Math.floor((scheduledUnix - nowUnix) / 60)} min). O agendamento interno requer pelo menos 10 min. Publicando AGORA...`);
+        if (scheduledUnix < nowUnix) {
+          toast.warning(`Horário selecionado já passou. Publicando AGORA...`);
           scheduledUnix = undefined;
         }
       }

@@ -119,6 +119,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             stage: 'content',
             scheduledDate: date || new Date().toISOString().split('T')[0],
             scheduledTime,
+            scheduledUnix: (date && scheduledTime) ? Math.floor(new Date(`${date}T${scheduledTime}:00`).getTime() / 1000) : undefined,
             videoThumbnailUrl: type === 'reels' ? reelsCover : undefined,
             assignedTo: assignedTo.length > 0 ? assignedTo : undefined
         }).then(newPost => {
