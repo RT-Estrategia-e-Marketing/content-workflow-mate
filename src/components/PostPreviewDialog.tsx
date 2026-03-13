@@ -15,7 +15,7 @@ import TimePicker from '@/components/TimePicker';
 import { publishToFacebook, publishToInstagram } from '@/lib/meta-api';
 import { formatDateBR } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Link2, UserPlus, Image, Film, Images, Instagram, Facebook, X, Edit2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap } from 'lucide-react';
-import { useState, useRef, DragEvent } from 'react';
+import { useState, useRef, DragEvent, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { storage } from '@/lib/firebase';
@@ -83,6 +83,21 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Sync internal state with post prop when it changes (e.g., after saving)
+  useEffect(() => {
+    setTitle(post.title);
+    setCaption(post.caption);
+    setIdeaText(post.ideaText || '');
+    setReferenceLink(post.referenceLink || '');
+    setType(post.type);
+    setPlatform(post.platform);
+    setDate(post.scheduledDate);
+    setScheduledTime(post.scheduledTime || '12:00');
+    setMainImage(post.imageUrl);
+    setVideoUrl(post.videoUrl || '');
+    setCarouselImages(post.images || []);
+  }, [post]);
+
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const currentStage = KANBAN_STAGES[stageIndex];
 
@@ -107,15 +122,20 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
     // Calc Unix timestamp if scheduling
     let scheduledUnix: number | undefined = undefined;
+    
+    console.log('DEBUG AGENDAMENTO:', { publishNow, date, scheduledTime });
+
     if (!publishNow && date && scheduledTime) {
       const dateTimeStr = `${date}T${scheduledTime}:00`;
       const dateObj = new Date(dateTimeStr);
+      console.log('DEBUG DATA OBJ:', dateObj.toString(), 'Timestamp:', dateObj.getTime());
+
       if (!isNaN(dateObj.getTime())) {
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
         
-        // Meta requirement: must be between 15 mins and 75 days in future
-        // We use 20 mins as a safety buffer
         const nowUnix = Math.floor(Date.now() / 1000);
+        console.log('DEBUG UNIX:', { scheduledUnix, nowUnix, diff: scheduledUnix - nowUnix });
+
         if (scheduledUnix < nowUnix + (20 * 60)) {
           toast.warning('O agendamento deve ser pelo menos 20 minutos no futuro. Publicando agora...');
           scheduledUnix = undefined;
