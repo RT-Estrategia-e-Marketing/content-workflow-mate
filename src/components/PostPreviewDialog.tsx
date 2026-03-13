@@ -119,43 +119,51 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       return;
     }
 
-    setIsPublishing(true);
     let successCount = 0;
 
     // Calc Unix timestamp if scheduling
     let scheduledUnix: number | undefined = undefined;
     
     console.log('DEBUG AGENDAMENTO:', { publishNow, date, scheduledTime });
-
+    const now = new Date();
+    
     if (!publishNow && date && scheduledTime) {
       const dateTimeStr = `${date}T${scheduledTime}:00`;
       const dateObj = new Date(dateTimeStr);
-      const now = new Date();
-      const timezoneOffset = now.getTimezoneOffset();
       
-      console.log('DEBUG AGENDAMENTO DETALHADO:', { 
-        inputDate: date, 
-        inputTime: scheduledTime, 
-        dateTimeStr, 
-        dateObjLocal: dateObj.toString(), 
-        nowLocal: now.toString(),
-        timezoneOffset,
-        timestampUnix: Math.floor(dateObj.getTime() / 1000),
-        nowUnix: Math.floor(now.getTime() / 1000)
-      });
-
       if (!isNaN(dateObj.getTime())) {
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
+        const nowUnix = Math.floor(now.getTime() / 1000);
         
-        const nowUnix = Math.floor(Date.now() / 1000);
-        const diffMinutes = Math.floor((scheduledUnix - nowUnix) / 60);
-
-        if (scheduledUnix < nowUnix + (20 * 60)) {
-          toast.warning(`Horário muito próximo (${diffMinutes} min). O Meta exige pelo menos 20 min de antecedência. Publicando AGORA...`);
+        if (scheduledUnix < nowUnix + (10 * 60)) {
+          toast.warning(`Horário muito próximo (${Math.floor((scheduledUnix - nowUnix) / 60)} min). O agendamento interno requer pelo menos 10 min. Publicando AGORA...`);
           scheduledUnix = undefined;
         }
       }
     }
+
+    if (!publishNow && scheduledUnix) {
+      // INTERNAL SCHEDULING MODE
+      setIsPublishing(true);
+      try {
+        await updatePost(post.id, {
+          stage: 'scheduled',
+          scheduledUnix,
+          scheduledDate: date,
+          scheduledTime
+        });
+        toast.success('Post agendado no sistema! O PostFlow publicará automaticamente no horário definido. 🚀');
+      } catch (error) {
+        toast.error('Erro ao salvar agendamento interno.');
+      } finally {
+        setIsPublishing(false);
+      }
+      return;
+    }
+
+    // DIRECT PUBLISH MODE (Bypassing Meta Scheduler for reliability)
+    setIsPublishing(true);
+
 
     try {
       // 1. Post to Facebook
@@ -307,10 +315,17 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       imageUrl = mainImage;
     }
 
+    let finalScheduledUnix: number | undefined = undefined;
+    if (date && scheduledTime) {
+      const dateObj = new Date(`${date}T${scheduledTime}:00`);
+      if (!isNaN(dateObj.getTime())) finalScheduledUnix = Math.floor(dateObj.getTime() / 1000);
+    }
+
     updatePost(post.id, {
       title, caption: type === 'story' ? '' : caption, type, platform, 
       scheduledDate: date,
       scheduledTime,
+      scheduledUnix: finalScheduledUnix,
       ideaText: ideaText.trim() || undefined,
       referenceLink: referenceLink.trim() || undefined,
       imageUrl, images, videoUrl: type === 'reels' ? videoUrl : undefined,

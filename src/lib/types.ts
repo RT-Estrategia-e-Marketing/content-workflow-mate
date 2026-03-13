@@ -27,6 +27,7 @@ export interface Post {
   assignedTo?: string[];
   scheduledDate: string;
   scheduledTime?: string;
+  scheduledUnix?: number; // Added
   videoThumbnailUrl?: string;
   approvalLink?: string;
   comments: PostComment[];
