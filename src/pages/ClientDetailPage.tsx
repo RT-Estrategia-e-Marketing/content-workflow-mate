@@ -341,11 +341,18 @@ export default function ClientDetailPage() {
                 <div className="space-y-3">
                   <Button
                     onClick={() => {
-                      if (renderProps.onClick) {
-                        renderProps.onClick();
-                      } else if ((window as any).FB) {
-                        (window as any).FB.login((r: any) => r.authResponse && handleFacebookLogin({ accessToken: r.authResponse.accessToken }), { scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management' });
+                      const fb = (window as any).FB;
+                      if (!fb) {
+                        toast.error("SDK da Meta não carregou.");
+                        return;
                       }
+                      fb.login((r: any) => {
+                        if (r.authResponse) {
+                          handleFacebookLogin({ accessToken: r.authResponse.accessToken });
+                        }
+                      }, { 
+                        scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management'
+                      });
                     }}
                     variant="outline"
                     className="w-full font-semibold flex items-center justify-center gap-2"
