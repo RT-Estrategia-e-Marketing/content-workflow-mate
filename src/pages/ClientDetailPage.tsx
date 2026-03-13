@@ -151,13 +151,9 @@ export default function ClientDetailPage() {
     if (response.accessToken) {
       toast.info('Login com Facebook realizado! Obtendo conexões permanentes...');
       setLoadingPages(true);
-
       try {
-        console.log('Chamando Cloud Function: exchangeMetaToken...');
         const exchangeMetaToken = httpsCallable(functions, 'exchangeMetaToken');
-        
         const result = await exchangeMetaToken({ shortLivedToken: response.accessToken });
-        console.log('Resultado da Cloud Function:', result);
         const exchangeData = result.data as any;
 
         if (exchangeData.data && exchangeData.data.length > 0) {
@@ -345,39 +341,7 @@ export default function ClientDetailPage() {
                 <MetaIcon className="w-5 h-5 mr-2" />
                 {client.meta_page_id ? "Reconectar com Meta" : "Conectar com Meta"}
               </Button>
-              
-              {fbStatus === 'error' && (
-                <Button 
-                  variant="ghost" 
-                  onClick={() => window.location.reload()} 
-                  className="w-full text-xs text-destructive hover:bg-destructive/5"
-                >
-                  Falha no SDK. Clique para Recarregar a Página
-                </Button>
-              )}
             </div>
-            
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-4 text-[11px] text-amber-800">
-              <p className="font-bold mb-1 flex items-center gap-2">
-                Status do SDK Meta: 
-                <span className={`inline-block w-2 h-2 rounded-full ${fbStatus === 'loaded' ? 'bg-green-500' : fbStatus === 'error' ? 'bg-red-500' : 'bg-amber-400 animate-pulse'}`}></span>
-              </p>
-              <p className="mb-2">Se os domínios já foram salvos na Meta mas o erro persiste, tente:</p>
-              <ol className="list-decimal ml-4 space-y-1">
-                <li>Dar um **Hard Refresh** (`Cmd+Shift+R`).</li>
-                <li>Limpar os cookies do domínio `facebook.com` no seu navegador.</li>
-                <li>Verificar se o **App ID** no painel da Meta é exatamente <code className="bg-amber-100 px-1 font-bold">2479723212497865</code>.</li>
-              </ol>
-              <div className="mt-3 flex gap-2">
-                <a href={`https://developers.facebook.com/apps/${metaAppId}/settings/basic/`} target="_blank" rel="noreferrer" className="underline font-bold text-primary">Abrir Painel Meta</a>
-                <span>•</span>
-                <button onClick={() => { localStorage.removeItem('fb_js_sdk_status'); window.location.reload(); }} className="underline font-bold">Zerar Sessão Meta</button>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-muted-foreground mt-2 text-center bg-muted/50 p-2 rounded-md">
-              <strong>Páginas não aparecem?</strong> Se a Página estiver em um Gerenciador de Negócios (BM), você precisa ir em <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-primary hover:underline">Configurações do Negócio</a> {'>'} Usuários {'>'} Pessoas, selecionar seu nome e clicar em "Adicionar Ativos" para atribuir a Página e a Conta do Instagram diretamente ao seu perfil do Facebook.
-            </p>
 
             {(metaPages.length > 0 || loadingPages) && (
               <div className="space-y-4 pt-4 border-t border-border">
