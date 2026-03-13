@@ -1,82 +1,65 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const functions = require("firebase-functions");
 const logger = require("firebase-functions/logger");
-const { defineString } = require('firebase-functions/params');
-
-// Define secrets/parameters
-const metaClientId = defineString('META_CLIENT_ID');
-const metaClientSecret = defineString('META_CLIENT_SECRET');
 
 /**
  * Exchanges a short-lived Meta user access token for long-lived and permanent page tokens.
+ * Usando 1st Gen para máxima compatibilidade com a URL do SDK.
  */
-exports.metaTokenExchange = onCall({ region: 'us-central1', cors: true }, async (request) => {
+exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (data, context) => {
   try {
-    const { shortLivedToken } = request.data;
+    const { shortLivedToken } = data;
 
     if (!shortLivedToken) {
-      throw new HttpsError('invalid-argument', 'O token de curta duração (shortLivedToken) é obrigatório.');
+      throw new functions.https.HttpsError('invalid-argument', 'O token de curta duração (shortLivedToken) é obrigatório.');
     }
 
-    let clientId, clientSecret;
-    try {
-      // Tenta ler dos Params ou do process.env (suporte ao arquivo .env)
-      clientId = process.env.META_CLIENT_ID || (metaClientId.value ? metaClientId.value() : null);
-      clientSecret = process.env.META_CLIENT_SECRET || (metaClientSecret.value ? metaClientSecret.value() : null);
-      
-      logger.info('Tentando usar App ID:', clientId ? clientId.substring(0, 4) + '...' : 'Nulo');
-    } catch (e) {
-      logger.error('Erro ao ler segredos da Meta:', e);
-    }
+    // Tenta ler do process.env (suporte ao arquivo .env) ou config legado
+    const clientId = process.env.META_CLIENT_ID || (functions.config().meta ? functions.config().meta.client_id : null);
+    const clientSecret = process.env.META_CLIENT_SECRET || (functions.config().meta ? functions.config().meta.client_secret : null);
 
     if (!clientId || !clientSecret) {
-      logger.error('Meta App credentials are not configured in Firebase');
-      throw new HttpsError('failed-precondition', 'Credenciais da Meta não encontradas no ambiente do Firebase.');
+      logger.error('Credenciais da Meta não encontradas no ambiente.');
+      throw new functions.https.HttpsError('failed-precondition', 'Configuração ausente: META_CLIENT_ID ou META_CLIENT_SECRET não definidos.');
     }
 
-    logger.info('Iniciando troca de token para o App ID:', clientId);
+    logger.info('Iniciando troca de token (1st Gen) para o App ID:', clientId.substring(0, 4) + '...');
 
-    // Dynamic import for node-fetch as it is an ESM module
     const { default: fetch } = await import('node-fetch');
 
-    // 1. Exchange short-lived User Token for a long-lived User Token (60 days)
+    // 1. Troca User Token Curto por Longo (60 dias)
     const longLivedUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
     
     const longLivedUserRes = await fetch(longLivedUrl);
     const longLivedUserData = await longLivedUserRes.json();
 
     if (longLivedUserData.error) {
-      logger.error('Meta API (User Token) Error:', longLivedUserData.error);
-      throw new HttpsError('internal', `Erro Meta (User Token): ${longLivedUserData.error.message} (Tipo: ${longLivedUserData.error.type})`);
+      logger.error('Erro Meta (User Token):', longLivedUserData.error);
+      throw new functions.https.HttpsError('internal', `Erro Meta: ${longLivedUserData.error.message}`);
     }
 
     const longLivedUserToken = longLivedUserData.access_token;
-    if (!longLivedUserToken) {
-      throw new HttpsError('internal', 'Meta não retornou um access_token de longa duração.');
-    }
 
-    // 2. Use long-lived User Token to get Page Access Tokens (these are usually permanent)
-    logger.info('Buscando contas/páginas vinculadas...');
+    // 2. Busca Tokens de Páginas (Permanentes)
     const pagesRes = await fetch(
       `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedUserToken}&limit=100`
     );
     const pagesData = await pagesRes.json();
 
     if (pagesData.error) {
-      logger.error('Meta API (Pages) Error:', pagesData.error);
-      throw new HttpsError('internal', `Erro Meta (Páginas): ${pagesData.error.message}`);
+      logger.error('Erro Meta (Páginas):', pagesData.error);
+      throw new functions.https.HttpsError('internal', `Erro Meta (Páginas): ${pagesData.error.message}`);
     }
 
-    // Return the list of pages with their long-lived/permanent access tokens
     return {
       data: pagesData.data || [],
-      message: 'Tokens trocados com sucesso'
+      message: 'Tokens trocados com sucesso (1st Gen)'
     };
 
   } catch (error) {
-    logger.error('Erro fatal em metaTokenExchange:', error);
-    if (error instanceof HttpsError) {
+    logger.error('Erro fatal:', error);
+    if (error instanceof functions.https.HttpsError) {
       throw error;
     }
-    throw new HttpsError('internal', `Erro Interno: ${error.message || 'Falha desconhecida no servidor'}`);
+    throw new functions.https.HttpsError('internal', error.message || 'Erro interno no servidor');
   }
 });
