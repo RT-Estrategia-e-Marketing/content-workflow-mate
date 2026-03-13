@@ -128,16 +128,28 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     if (!publishNow && date && scheduledTime) {
       const dateTimeStr = `${date}T${scheduledTime}:00`;
       const dateObj = new Date(dateTimeStr);
-      console.log('DEBUG DATA OBJ:', dateObj.toString(), 'Timestamp:', dateObj.getTime());
+      const now = new Date();
+      const timezoneOffset = now.getTimezoneOffset();
+      
+      console.log('DEBUG AGENDAMENTO DETALHADO:', { 
+        inputDate: date, 
+        inputTime: scheduledTime, 
+        dateTimeStr, 
+        dateObjLocal: dateObj.toString(), 
+        nowLocal: now.toString(),
+        timezoneOffset,
+        timestampUnix: Math.floor(dateObj.getTime() / 1000),
+        nowUnix: Math.floor(now.getTime() / 1000)
+      });
 
       if (!isNaN(dateObj.getTime())) {
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
         
         const nowUnix = Math.floor(Date.now() / 1000);
-        console.log('DEBUG UNIX:', { scheduledUnix, nowUnix, diff: scheduledUnix - nowUnix });
+        const diffMinutes = Math.floor((scheduledUnix - nowUnix) / 60);
 
         if (scheduledUnix < nowUnix + (20 * 60)) {
-          toast.warning('O agendamento deve ser pelo menos 20 minutos no futuro. Publicando agora...');
+          toast.warning(`Horário muito próximo (${diffMinutes} min). O Meta exige pelo menos 20 min de antecedência. Publicando AGORA...`);
           scheduledUnix = undefined;
         }
       }

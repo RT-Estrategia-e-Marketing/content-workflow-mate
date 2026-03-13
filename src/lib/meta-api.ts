@@ -44,22 +44,22 @@ export async function publishToFacebook({ pageId, accessToken, caption, imageUrl
     let endpoint = `https://graph.facebook.com/v19.0/${pageId}`;
     const formData = new URLSearchParams();
     formData.append('access_token', accessToken);
-    formData.append('message', caption);
+    if (imageUrl) {
+        endpoint += '/photos';
+        formData.append('url', imageUrl);
+        formData.append('caption', caption); // Photos use 'caption'
+    } else if (videoUrl) {
+        endpoint += '/videos';
+        formData.append('file_url', videoUrl);
+        formData.append('description', caption); // Videos use 'description'
+    } else {
+        endpoint += '/feed';
+        formData.append('message', caption); // Feed uses 'message'
+    }
 
     if (scheduledPublishTime) {
         formData.append('scheduled_publish_time', scheduledPublishTime.toString());
         formData.append('published', 'false');
-    }
-
-    if (imageUrl) {
-        endpoint += '/photos';
-        formData.append('url', imageUrl);
-    } else if (videoUrl) {
-        endpoint += '/videos';
-        formData.append('file_url', videoUrl);
-        formData.append('description', caption);
-    } else {
-        endpoint += '/feed';
     }
 
     try {
@@ -140,7 +140,9 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
             const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igAccountId}/media`, { method: 'POST', body: containerParams });
             const containerData = await containerRes.json();
             if (containerData.error) throw new Error(containerData.error.message);
+            
             creationId = containerData.id;
+            if (!creationId) throw new Error('Não foi possível gerar o ID do container de mídia (creationId vazio).');
         }
 
         if (scheduledPublishTime) {
