@@ -9,7 +9,7 @@ const metaClientSecret = defineString('META_CLIENT_SECRET');
 /**
  * Exchanges a short-lived Meta user access token for long-lived and permanent page tokens.
  */
-exports.metaTokenExchange = onCall({ cors: true }, async (request) => {
+exports.metaTokenExchange = onCall({ region: 'us-central1', cors: true }, async (request) => {
   try {
     const { shortLivedToken } = request.data;
 

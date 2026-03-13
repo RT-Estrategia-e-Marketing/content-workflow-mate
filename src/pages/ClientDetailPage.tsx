@@ -153,10 +153,11 @@ export default function ClientDetailPage() {
       setLoadingPages(true);
 
       try {
-        // Exchange short-lived token for long-lived/permanent tokens via Firebase Cloud Function (onCall)
+        console.log('Chamando Cloud Function: metaTokenExchange...');
         const metaTokenExchange = httpsCallable(functions, 'metaTokenExchange');
         
         const result = await metaTokenExchange({ shortLivedToken: response.accessToken });
+        console.log('Resultado da Cloud Function:', result);
         const exchangeData = result.data as any;
 
         if (exchangeData.data && exchangeData.data.length > 0) {
