@@ -31,7 +31,7 @@ function translateMetaError(error: any): string {
     }
 
     if (message.includes('whitelist') || message.includes('capability')) {
-        return "Erro de permissão no Instagram: Esta funcionalidade de agendamento pode exigir que seu App na Meta esteja em modo 'Live' ou que você seja administrador do App.";
+        return "Erro de Whitelist: Se seu App na Meta está em modo 'Live', ele bloqueia essa permissão até que você passe pelo App Review oficial. Mude para modo 'Development' no painel da Meta para testar livremente.";
     }
 
     if (message.includes('scheduled_publish_time')) {
