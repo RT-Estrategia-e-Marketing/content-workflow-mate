@@ -16,15 +16,17 @@ function translateMetaError(message) {
   return message;
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
  * Função interna para disparar publicação "AGORA" (Facebook/Instagram).
  */
 async function publishMedia(postData, clientData) {
-  const { default: fetch } = await import('node-fetch');
+  const { caption, image_url, video_url, images, type, platform } = postData;
+  const { meta_access_token, meta_page_id, meta_ig_account_id } = clientData;
   const results = { fb: null, ig: null, errors: [] };
 
-  const { meta_access_token, meta_page_id, meta_ig_account_id } = clientData;
-  const { caption, image_url, images, video_url, type, platform } = postData;
+  const { default: fetch } = await import('node-fetch');
 
   functions.logger.info(`Iniciando publishMedia para plataforma: ${platform}`, { type, image_url, video_url });
 
@@ -32,10 +34,9 @@ async function publishMedia(postData, clientData) {
   if (platform === 'facebook' || platform === 'both') {
     try {
       let endpoint = `https://graph.facebook.com/v19.0/${meta_page_id}`;
-      const params = new URLSearchParams();
-      params.append('access_token', meta_access_token);
+      const params = new URLSearchParams({ access_token: meta_access_token });
 
-      if (image_url && type !== 'reels') {
+      if (type === 'image') {
         endpoint += '/photos';
         params.append('url', image_url);
         params.append('caption', caption || '');
@@ -84,6 +85,7 @@ async function publishMedia(postData, clientData) {
         const cr = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media`, { method: 'POST', body: cp });
         const cd = await cr.json();
         creationId = cd.id;
+        if (cd.error) throw new Error(cd.error.message);
       } else {
         const cp = new URLSearchParams({ access_token: meta_access_token, caption: caption || '' });
         if (type === 'reels') {
@@ -99,6 +101,23 @@ async function publishMedia(postData, clientData) {
       }
 
       if (!creationId) throw new Error("Não foi possível criar o container de mídia no Instagram.");
+
+      // Polling para processamento de vídeo (Instagram demora alguns segundos)
+      let attempts = 0;
+      let status = 'IN_PROGRESS';
+      while (attempts < 15 && status !== 'FINISHED') {
+        await sleep(5000 * (attempts + 1) / 2); // Espera crescente
+        const sr = await fetch(`https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${meta_access_token}`);
+        const sd = await sr.json();
+        status = sd.status_code;
+        if (status === 'ERROR') throw new Error(`Processamento de vídeo no Instagram falhou: ${sd.status_message || 'Erro desconhecido'}`);
+        attempts++;
+        functions.logger.info(`Instagram status check (${attempts}): ${status}`);
+      }
+
+      if (status !== 'FINISHED' && (type === 'reels' || type === 'carousel')) {
+        functions.logger.warn("Avisando: Tentando publicar mesmo sem status FINISHED confirmado.");
+      }
 
       // Publish
       functions.logger.info(`Publicando container Instagram: ${creationId}`);
@@ -116,6 +135,51 @@ async function publishMedia(postData, clientData) {
 
   return results;
 }
+
+/**
+ * Publicar Agora (Https Call)
+ * Permite que o frontend dispare uma publicação imediata usando a lógica do servidor.
+ */
+exports.publishPostNow = functions.region('us-central1').https.onCall(async (data, context) => {
+  try {
+    const { postId } = data;
+    if (!postId) throw new Error("postId é obrigatório.");
+
+    const postDoc = await db.collection('posts').doc(postId).get();
+    if (!postDoc.exists) throw new Error("Post não encontrado.");
+    const post = postDoc.data();
+
+    const clientDoc = await db.collection('clients').doc(post.client_id).get();
+    if (!clientDoc.exists) throw new Error("Cliente não encontrado.");
+    const client = clientDoc.data();
+
+    if (!client.meta_access_token) throw new Error("Integração Meta não configurada.");
+
+    const results = await publishMedia(post, client);
+
+    if (results.errors.length > 0) {
+      // Se era para postar em ambos e um deu certo, consideramos sucesso parcial
+      const isBoth = post.platform === 'both';
+      if (isBoth && (results.fb || results.ig)) {
+        // Sucesso parcial - logamos mas retornamos sucesso
+      } else if (!results.fb && !results.ig) {
+        throw new Error(results.errors.join(' | '));
+      }
+    }
+
+    // Atualiza status no banco
+    await postDoc.ref.update({
+      stage: 'approved',
+      published_at: admin.firestore.FieldValue.serverTimestamp(),
+      meta_ids: { fb: results.fb, ig: results.ig }
+    });
+
+    return { success: true, results };
+  } catch (e) {
+    functions.logger.error("Erro em publishPostNow:", e);
+    throw new functions.https.HttpsError('internal', e.message);
+  }
+});
 
 /**
  * Worker agendado que roda a cada 5 minutos.
