@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PostType, Platform } from '@/lib/types';
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
-import { storage } from '@/lib/firebase';
+import { storage, functions } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import MetaIcon from '@/components/icons/MetaIcon';
 import NewPostModal from '@/components/NewPostModal';
@@ -152,23 +153,11 @@ export default function ClientDetailPage() {
       setLoadingPages(true);
 
       try {
-        // Exchange short-lived token for long-lived/permanent tokens via Firebase Cloud Function
-        // Nota: Substitua pela URL real da sua função após o deploy (ex: https://us-central1-postflow-6bb75.cloudfunctions.net/metaTokenExchange)
-        const functionUrl = `https://us-central1-postflow-6bb75.cloudfunctions.net/metaTokenExchange`;
+        // Exchange short-lived token for long-lived/permanent tokens via Firebase Cloud Function (onCall)
+        const metaTokenExchange = httpsCallable(functions, 'metaTokenExchange');
         
-        const exchangeRes = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ shortLivedToken: response.accessToken })
-        });
-
-        const exchangeData = await exchangeRes.json();
-
-        if (exchangeData.error) {
-          throw new Error(exchangeData.error);
-        }
+        const result = await metaTokenExchange({ shortLivedToken: response.accessToken });
+        const exchangeData = result.data as any;
 
         if (exchangeData.data && exchangeData.data.length > 0) {
           setMetaPages(exchangeData.data);
@@ -177,8 +166,8 @@ export default function ClientDetailPage() {
           toast.info('Nenhuma página do Facebook encontrada para este usuário.');
         }
       } catch (err: any) {
-        console.error('Erro ao trocar tokens da Meta via Firebase:', err);
-        toast.error(`Falha na conexão: ${err.message || 'Erro desconhecido'}. Certifique-se de que a função foi implantada.`);
+        console.error('Erro ao trocar tokens da Meta via Firebase Functions:', err);
+        toast.error(`Falha na conexão: ${err.message || 'Erro desconhecido'}. Verifique se a função foi implantada.`);
       } finally {
         setLoadingPages(false);
       }

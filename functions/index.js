@@ -1,4 +1,4 @@
-const { onRequest } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const { defineString } = require('firebase-functions/params');
 
@@ -9,13 +9,12 @@ const metaClientSecret = defineString('META_CLIENT_SECRET');
 /**
  * Exchanges a short-lived Meta user access token for long-lived and permanent page tokens.
  */
-exports.metaTokenExchange = onRequest({ cors: true }, async (req, res) => {
+exports.metaTokenExchange = onCall({ cors: true }, async (request) => {
   try {
-    const { shortLivedToken } = req.body;
+    const { shortLivedToken } = request.data;
 
     if (!shortLivedToken) {
-      res.status(400).json({ error: 'shortLivedToken is required' });
-      return;
+      throw new HttpsError('invalid-argument', 'shortLivedToken is required');
     }
 
     const clientId = metaClientId.value();
@@ -23,8 +22,7 @@ exports.metaTokenExchange = onRequest({ cors: true }, async (req, res) => {
 
     if (!clientId || !clientSecret) {
       logger.error('Meta App credentials are not configured in Firebase');
-      res.status(500).json({ error: 'Meta App credentials not configured' });
-      return;
+      throw new HttpsError('failed-precondition', 'Meta App credentials not configured');
     }
 
     logger.info('Exchanging short-lived token for long-lived token...');
@@ -40,8 +38,7 @@ exports.metaTokenExchange = onRequest({ cors: true }, async (req, res) => {
 
     if (longLivedUserData.error) {
       logger.error('Meta API (User Token) Error:', longLivedUserData.error);
-      res.status(400).json({ error: `Meta API (User Token): ${longLivedUserData.error.message}` });
-      return;
+      throw new HttpsError('internal', `Meta API (User Token): ${longLivedUserData.error.message}`);
     }
 
     const longLivedUserToken = longLivedUserData.access_token;
@@ -55,18 +52,20 @@ exports.metaTokenExchange = onRequest({ cors: true }, async (req, res) => {
 
     if (pagesData.error) {
       logger.error('Meta API (Pages) Error:', pagesData.error);
-      res.status(400).json({ error: `Meta API (Pages): ${pagesData.error.message}` });
-      return;
+      throw new HttpsError('internal', `Meta API (Pages): ${pagesData.error.message}`);
     }
 
     // Return the list of pages with their long-lived/permanent access tokens
-    res.status(200).json({
+    return {
       data: pagesData.data,
       message: 'Tokens exchanged successfully'
-    });
+    };
 
   } catch (error) {
     logger.error('Error in metaTokenExchange:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error' });
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError('internal', error.message || 'Internal Server Error');
   }
 });
