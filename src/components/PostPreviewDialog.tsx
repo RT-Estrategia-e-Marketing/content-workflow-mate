@@ -41,11 +41,11 @@ function PreviewCarousel({ images }: { images: string[] }) {
 
 interface PostPreviewDialogProps {
   post: Post;
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export default function PostPreviewDialog({ post, isOpen, onClose }: PostPreviewDialogProps) {
+export default function PostPreviewDialog({ post, open, onOpenChange }: PostPreviewDialogProps) {
   const { clients, updatePost, deletePost } = useApp();
   const { profiles } = useProfiles();
   const { user } = useAuth();
@@ -154,39 +154,60 @@ export default function PostPreviewDialog({ post, isOpen, onClose }: PostPreview
     let scheduledUnix: number | undefined = undefined;
     const now = new Date();
     
-    if (!publishNow && date && scheduledTime) {
+    if (!publishNow) {
+      if (!date || !scheduledTime) {
+        return toast.error("Data e horário são obrigatórios para agendar.");
+      }
+
       const dateObj = new Date(`${date}T${scheduledTime}:00`);
+      console.log('DEBUG AGENDAMENTO:', { 
+        inputDate: date, 
+        inputTime: scheduledTime, 
+        calculatedDateObj: dateObj.toString(),
+        now: now.toString() 
+      });
+
       if (!isNaN(dateObj.getTime())) {
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
-        if (scheduledUnix < Math.floor(now.getTime() / 1000)) {
-          toast.warning(`Horário selecionado já passou. Publicando AGORA...`);
+        const nowUnix = Math.floor(now.getTime() / 1000);
+        
+        // Se for para agendar, e o horário ainda NÃO passou
+        if (scheduledUnix > nowUnix) {
+          setIsPublishing(true);
+          try {
+            await updatePost(post.id, { 
+              stage: 'scheduled', 
+              scheduledUnix,
+              scheduledDate: date,
+              scheduledTime
+            });
+            toast.success('Post agendado no sistema PostFlow! 🚀');
+            onOpenChange(false);
+            return; // INTERROMPE AQUI - NÃO PUBLICA AGORA
+          } catch (error) {
+            toast.error('Erro ao salvar agendamento interno.');
+            setIsPublishing(false);
+            return;
+          }
+        } else {
+          toast.warning(`Horário selecionado (${scheduledTime}) já passou. Publicando AGORA...`);
           scheduledUnix = undefined;
         }
+      } else {
+        return toast.error("Data ou horário inválidos.");
       }
     }
 
+    // MODO PUBLICAÇÃO IMEDIATA (Via Backend)
     setIsPublishing(true);
     try {
-      if (!publishNow && scheduledUnix) {
-        // Agendamento Interno
-        await updatePost(post.id, { 
-          stage: 'scheduled', 
-          scheduledUnix,
-          scheduledDate: date,
-          scheduledTime
-        });
-        toast.success('Post agendado no sistema PostFlow! 🚀');
-        onClose();
+      const publishPostNow = httpsCallable(functions, 'publishPostNow');
+      const result: any = await publishPostNow({ postId: post.id });
+      if (result.data.success) {
+        toast.success('Post publicado com sucesso via PostFlow! ✨');
+          onOpenChange(false);
       } else {
-        // Publicação Direta (via Backend)
-        const publishPostNow = httpsCallable(functions, 'publishPostNow');
-        const result: any = await publishPostNow({ postId: post.id });
-        if (result.data.success) {
-          toast.success('Post publicado com sucesso via PostFlow! ✨');
-          onClose();
-        } else {
-          throw new Error(result.data.message || 'Erro desconhecido');
-        }
+        throw new Error(result.data.message || 'Erro desconhecido');
       }
     } catch (error: any) {
       console.error('Publish Error:', error);
@@ -263,7 +284,7 @@ export default function PostPreviewDialog({ post, isOpen, onClose }: PostPreview
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(v) => { if (!v) { resetEdit(); onClose(); } }}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) { resetEdit(); onOpenChange(false); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
@@ -427,7 +448,7 @@ export default function PostPreviewDialog({ post, isOpen, onClose }: PostPreview
           <p className="text-sm text-muted-foreground">Deseja realmente excluir este post?</p>
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => setDeleteOpen(false)} className="flex-1">Cancelar</Button>
-            <Button variant="destructive" onClick={() => { deletePost(post.id); onClose(); }} className="flex-1">Excluir</Button>
+            <Button variant="destructive" onClick={() => { deletePost(post.id); onOpenChange(false); }} className="flex-1">Excluir</Button>
           </div>
         </DialogContent>
       </Dialog>
