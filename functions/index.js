@@ -2,9 +2,9 @@ const functions = require("firebase-functions");
 
 /**
  * Exchanges a short-lived Meta user access token for long-lived and permanent page tokens.
- * Usando 1st Gen para máxima compatibilidade com a URL do SDK.
+ * Usando um NOVO NOME (exchangeMetaToken) para evitar conflitos de "CPU" com deploys v2 antigos.
  */
-exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (data, context) => {
+exports.exchangeMetaToken = functions.region('us-central1').https.onCall(async (data, context) => {
   try {
     const { shortLivedToken } = data;
 
@@ -12,16 +12,16 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
       throw new functions.https.HttpsError('invalid-argument', 'O token de curta duração (shortLivedToken) é obrigatório.');
     }
 
-    // Tenta ler do process.env (suporte ao arquivo .env) ou config legado
+    // Tenta ler do process.env (suporte ao arquivo .env) ou config legado (functions:config:set)
     const clientId = process.env.META_CLIENT_ID || (functions.config().meta ? functions.config().meta.client_id : null);
     const clientSecret = process.env.META_CLIENT_SECRET || (functions.config().meta ? functions.config().meta.client_secret : null);
 
     if (!clientId || !clientSecret) {
-      functions.logger.error('Credenciais da Meta não encontradas no ambiente.');
-      throw new functions.https.HttpsError('failed-precondition', 'Configuração ausente: META_CLIENT_ID ou META_CLIENT_SECRET não definidos.');
+      functions.logger.error('Credenciais da Meta não encontradas. Verifique se META_CLIENT_ID e META_CLIENT_SECRET estão definidos.');
+      throw new functions.https.HttpsError('failed-precondition', 'Configuração ausente: Credenciais da Meta não encontradas no ambiente.');
     }
 
-    functions.logger.info('Iniciando troca de token (1st Gen) para o App ID:', clientId.substring(0, 4) + '...');
+    functions.logger.info('Iniciando troca de token (exchangeMetaToken) para o App ID:', clientId.substring(0, 4) + '...');
 
     const { default: fetch } = await import('node-fetch');
 
@@ -51,7 +51,7 @@ exports.metaTokenExchange = functions.region('us-central1').https.onCall(async (
 
     return {
       data: pagesData.data || [],
-      message: 'Tokens trocados com sucesso (1st Gen)'
+      message: 'Tokens trocados com sucesso ( exchangeMetaToken )'
     };
 
   } catch (error) {

@@ -153,10 +153,10 @@ export default function ClientDetailPage() {
       setLoadingPages(true);
 
       try {
-        console.log('Chamando Cloud Function: metaTokenExchange...');
-        const metaTokenExchange = httpsCallable(functions, 'metaTokenExchange');
+        console.log('Chamando Cloud Function: exchangeMetaToken...');
+        const exchangeMetaToken = httpsCallable(functions, 'exchangeMetaToken');
         
-        const result = await metaTokenExchange({ shortLivedToken: response.accessToken });
+        const result = await exchangeMetaToken({ shortLivedToken: response.accessToken });
         console.log('Resultado da Cloud Function:', result);
         const exchangeData = result.data as any;
 
