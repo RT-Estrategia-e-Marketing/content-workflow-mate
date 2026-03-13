@@ -4,9 +4,9 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useUserRole } from '@/hooks/useUserRole';
 import KanbanBoard from '@/components/KanbanBoard';
 import { ArrowLeft, Plus, X, Edit2, Upload, GripVertical, Trash2 } from 'lucide-react';
-import { useState, useRef, DragEvent } from 'react';
+import { useState, useRef, DragEvent, useEffect } from 'react';
 import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,7 +47,28 @@ export default function ClientDetailPage() {
   // Meta Graph API states
   const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
   const [loadingPages, setLoadingPages] = useState(false);
-  const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || 'SEU_APP_ID');
+  const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || '2479723212497865');
+
+  // Logs para depuração do SDK da Meta
+  useEffect(() => {
+    if (metaOpen) {
+      console.log('--- Meta Login Debug ---');
+      console.log('App ID Atual:', metaAppId);
+      console.log('Ambiente:', import.meta.env.MODE);
+      console.log('URL Base:', window.location.origin);
+      
+      const checkFB = setInterval(() => {
+        if ((window as any).FB) {
+          console.log('SDK da Meta (FB) detectado no window!');
+          clearInterval(checkFB);
+        } else {
+          console.log('Aguardando SDK da Meta...');
+        }
+      }, 2000);
+      
+      return () => clearInterval(checkFB);
+    }
+  }, [metaOpen, metaAppId]);
 
   if (!client) return <p className="text-muted-foreground">Cliente não encontrado</p>;
 
@@ -270,6 +291,9 @@ export default function ClientDetailPage() {
             <DialogTitle className="font-display flex items-center gap-2">
               <MetaIcon className="w-6 h-6 text-foreground" /> Integração Meta (Setup)
             </DialogTitle>
+            <DialogDescription>
+              Conecte sua conta do Facebook para gerenciar postagens e Instagram.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {client.meta_page_name && (
@@ -309,14 +333,22 @@ export default function ClientDetailPage() {
               callback={handleFacebookLogin}
               render={renderProps => (
                 <Button
-                  onClick={(e) => {
+                  onClick={() => {
+                    console.log('Botão de login clicado! Propriedades:', { metaAppId });
                     if (!metaAppId || metaAppId === 'SEU_APP_ID') {
                       toast.warning("Usando ID de App padrão. Verifique seu arquivo .env");
                     }
                     if (renderProps.onClick) {
-                      renderProps.onClick();
+                      console.log('Chamando renderProps.onClick()...');
+                      try {
+                        renderProps.onClick();
+                      } catch (e) {
+                        console.error('Erro ao chamar renderProps.onClick:', e);
+                        toast.error("Erro ao iniciar login: " + (e as Error).message);
+                      }
                     } else {
-                      toast.error("Erro: SDK do Facebook não carregou (renderProps.onClick ausente)");
+                      console.error('renderProps.onClick está ausente. SDK não inicializado?');
+                      toast.error("Erro: SDK do Facebook não carregou. Tente recarregar a página.");
                     }
                   }}
                   variant="outline"
