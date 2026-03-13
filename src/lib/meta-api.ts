@@ -30,6 +30,10 @@ function translateMetaError(error: any): string {
         return "Erro de permissão. Certifique-se de que você concedeu todas as autorizações solicitadas durante o login com o Facebook.";
     }
 
+    if (message.includes('whitelist') || message.includes('capability')) {
+        return "Erro de permissão no Instagram: Esta funcionalidade de agendamento pode exigir que seu App na Meta esteja em modo 'Live' ou que você seja administrador do App.";
+    }
+
     if (message.includes('scheduled_publish_time')) {
         return "Erro no agendamento. O horário deve ser pelo menos 20 minutos no futuro e no máximo 75 dias.";
     }
@@ -107,7 +111,10 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
             containerParams.append('caption', caption);
             containerParams.append('media_type', 'CAROUSEL');
             containerParams.append('children', itemIds.join(','));
-            if (scheduledPublishTime) containerParams.append('scheduled_publish_time', scheduledPublishTime.toString());
+            if (scheduledPublishTime) {
+                containerParams.append('scheduled_publish_time', scheduledPublishTime.toString());
+                containerParams.append('published', 'false');
+            }
 
             const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igAccountId}/media`, { method: 'POST', body: containerParams });
             const containerData = await containerRes.json();
@@ -135,6 +142,7 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
 
             if (scheduledPublishTime) {
                 containerParams.append('scheduled_publish_time', scheduledPublishTime.toString());
+                containerParams.append('published', 'false');
             }
 
             const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igAccountId}/media`, { method: 'POST', body: containerParams });
