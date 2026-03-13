@@ -105,23 +105,37 @@ export default function ClientDetailPage() {
 
   const handleFacebookLogin = async (response: any) => {
     if (response.accessToken) {
-      setMetaAccessToken(response.accessToken);
-      toast.success('Login com Facebook realizado! Buscando páginas...');
-
+      toast.info('Login com Facebook realizado! Obtendo conexões permanentes...');
       setLoadingPages(true);
-      try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${response.accessToken}&limit=100`);
-        const data = await res.json();
 
-        if (data.data && data.data.length > 0) {
-          setMetaPages(data.data);
-          toast.success(`${data.data.length} páginas encontradas.`);
+      try {
+        // Exchange short-lived token for long-lived/permanent tokens via Firebase Cloud Function
+        // Nota: Substitua pela URL real da sua função após o deploy (ex: https://us-central1-postflow-6bb75.cloudfunctions.net/metaTokenExchange)
+        const functionUrl = `https://us-central1-postflow-6bb75.cloudfunctions.net/metaTokenExchange`;
+        
+        const exchangeRes = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ shortLivedToken: response.accessToken })
+        });
+
+        const exchangeData = await exchangeRes.json();
+
+        if (exchangeData.error) {
+          throw new Error(exchangeData.error);
+        }
+
+        if (exchangeData.data && exchangeData.data.length > 0) {
+          setMetaPages(exchangeData.data);
+          toast.success(`${exchangeData.data.length} páginas encontradas com conexão permanente.`);
         } else {
           toast.info('Nenhuma página do Facebook encontrada para este usuário.');
         }
-      } catch (err) {
-        console.error('Erro ao buscar páginas do Meta:', err);
-        toast.error('Erro ao buscar as páginas.');
+      } catch (err: any) {
+        console.error('Erro ao trocar tokens da Meta via Firebase:', err);
+        toast.error(`Falha na conexão: ${err.message || 'Erro desconhecido'}. Certifique-se de que a função foi implantada.`);
       } finally {
         setLoadingPages(false);
       }

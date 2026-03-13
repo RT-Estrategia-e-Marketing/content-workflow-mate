@@ -17,6 +17,27 @@ interface MetaPublishParams {
 }
 
 /**
+ * Traduz erros da Meta para mensagens amigáveis em português
+ */
+function translateMetaError(error: any): string {
+    const message = error?.message || (typeof error === 'string' ? error : 'Erro desconhecido');
+    
+    if (message.includes('access token') || message.includes('Session has expired')) {
+        return "Sua conexão com o Meta expirou. Por favor, vá nas configurações do cliente e clique em 'Reconectar com Meta' para continuar publicando.";
+    }
+    
+    if (message.includes('permissions')) {
+        return "Erro de permissão. Certifique-se de que você concedeu todas as autorizações solicitadas durante o login com o Facebook.";
+    }
+
+    if (message.includes('scheduled_publish_time')) {
+        return "Erro no agendamento. O horário deve ser pelo menos 20 minutos no futuro e no máximo 75 dias.";
+    }
+
+    return message;
+}
+
+/**
  * Publicar no Facebook
  */
 export async function publishToFacebook({ pageId, accessToken, caption, imageUrl, videoUrl, scheduledPublishTime }: MetaPublishParams): Promise<{ id: string } | null> {
@@ -50,9 +71,9 @@ export async function publishToFacebook({ pageId, accessToken, caption, imageUrl
         const data = await res.json();
         if (data.error) throw new Error(data.error.message);
         return data;
-    } catch (err) {
+    } catch (err: any) {
         console.error('Erro ao publicar no Facebook:', err);
-        throw err;
+        throw new Error(translateMetaError(err));
     }
 }
 
@@ -122,13 +143,8 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
             creationId = containerData.id;
         }
 
-        // 3. Publicar (Publish the container)
-        // Nota: Se estiver agendando, o container já está agendado? 
-        // Na verdade para Instagram Graph API, o agendamento é feito na criação do container (passo anterior).
-        // Se houver scheduled_publish_time, NÃO chamamos media_publish (ele será publicado automaticamente pelo Meta).
-        
         if (scheduledPublishTime) {
-            return { id: creationId }; // Retorna o container ID agendado
+            return { id: creationId }; 
         }
 
         const publishParams = new URLSearchParams();
@@ -140,8 +156,8 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
         if (publishData.error) throw new Error(publishData.error.message);
         
         return publishData;
-    } catch (err) {
+    } catch (err: any) {
         console.error('Erro ao publicar no Instagram:', err);
-        throw err;
+        throw new Error(translateMetaError(err));
     }
 }
