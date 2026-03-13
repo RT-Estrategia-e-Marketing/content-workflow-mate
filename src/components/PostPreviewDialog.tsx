@@ -83,8 +83,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Sync internal state with post prop when it changes (e.g., after saving)
+  // Sync internal state with post prop when it changes (e.g., after saving or external update)
   useEffect(() => {
+    if (editing) return; // Don't overwrite while user is editing
+    
     setTitle(post.title);
     setCaption(post.caption);
     setIdeaText(post.ideaText || '');
@@ -96,7 +98,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setMainImage(post.imageUrl);
     setVideoUrl(post.videoUrl || '');
     setCarouselImages(post.images || []);
-  }, [post]);
+  }, [post, editing]);
 
   const stageIndex = KANBAN_STAGES.findIndex(s => s.key === post.stage);
   const currentStage = KANBAN_STAGES[stageIndex];

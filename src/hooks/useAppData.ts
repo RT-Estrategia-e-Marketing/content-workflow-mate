@@ -33,6 +33,7 @@ export interface DbPost {
   reference_link: string | null;
   assigned_to: string | null;
   scheduled_date: string;
+  scheduled_time: string | null; // Added
   approval_link: string | null;
   comments: PostComment[];
   created_at: string;
@@ -65,6 +66,7 @@ export function dbPostToPost(id: string, p: DbPost): Post {
     referenceLink: p.reference_link || undefined,
     assignedTo: Array.isArray(p.assigned_to) ? p.assigned_to : (p.assigned_to ? [p.assigned_to] : []), // Ensure assignedTo is an array
     scheduledDate: p.scheduled_date,
+    scheduledTime: p.scheduled_time || undefined,
     approvalLink: p.approval_link || undefined,
     comments: (p.comments || []) as PostComment[],
     createdAt: p.created_at ? p.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -187,6 +189,7 @@ export function useAppData() {
         reference_link: post.referenceLink || null,
         assigned_to: post.assignedTo || [], // Ensure assignedTo is an array
         scheduled_date: post.scheduledDate,
+        scheduled_time: post.scheduledTime || null,
         approval_link: null,
         comments: [],
         created_at: new Date().toISOString()
@@ -213,6 +216,7 @@ export function useAppData() {
     if (data.referenceLink !== undefined) update.reference_link = data.referenceLink;
     if (data.assignedTo !== undefined) update.assigned_to = data.assignedTo; // assignedTo is already an array
     if (data.scheduledDate !== undefined) update.scheduled_date = data.scheduledDate;
+    if (data.scheduledTime !== undefined) update.scheduled_time = data.scheduledTime;
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
     if (data.comments !== undefined) update.comments = data.comments;
 
