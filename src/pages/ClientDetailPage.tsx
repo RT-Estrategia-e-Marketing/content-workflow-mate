@@ -335,20 +335,33 @@ export default function ClientDetailPage() {
                 <Button
                   onClick={() => {
                     console.log('Botão de login clicado! Propriedades:', { metaAppId });
-                    if (!metaAppId || metaAppId === 'SEU_APP_ID') {
-                      toast.warning("Usando ID de App padrão. Verifique seu arquivo .env");
-                    }
+                    
+                    const manualLogin = () => {
+                      if ((window as any).FB) {
+                        console.log('Tentativa de Login Manual via FB.login()...');
+                        (window as any).FB.login((resp: any) => {
+                          console.log('Resposta Login Manual:', resp);
+                          if (resp.authResponse) {
+                            handleFacebookLogin({ accessToken: resp.authResponse.accessToken });
+                          }
+                        }, { 
+                          scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management',
+                          return_scopes: true 
+                        });
+                      }
+                    };
+
                     if (renderProps.onClick) {
                       console.log('Chamando renderProps.onClick()...');
                       try {
                         renderProps.onClick();
                       } catch (e) {
-                        console.error('Erro ao chamar renderProps.onClick:', e);
-                        toast.error("Erro ao iniciar login: " + (e as Error).message);
+                        console.error('Erro no renderProps.onClick, tentando manual...', e);
+                        manualLogin();
                       }
                     } else {
-                      console.error('renderProps.onClick está ausente. SDK não inicializado?');
-                      toast.error("Erro: SDK do Facebook não carregou. Tente recarregar a página.");
+                      console.log('renderProps.onClick ausente, tentando manual...');
+                      manualLogin();
                     }
                   }}
                   variant="outline"
@@ -359,6 +372,16 @@ export default function ClientDetailPage() {
                 </Button>
               )}
             />
+            
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mt-4 text-[11px] text-amber-800">
+              <p className="font-bold mb-1">Dica de Diagnóstico:</p>
+              <p>O erro "Uncaught t" geralmente significa que o domínio <code className="bg-amber-100 px-1">rodrigotempass.com.br</code> não está cadastrado no seu App da Meta.</p>
+              <ul className="list-disc ml-4 mt-1 space-y-1">
+                <li>Acesse o <a href={`https://developers.facebook.com/apps/${metaAppId}/settings/basic/`} target="_blank" rel="noreferrer" className="underline font-bold">Painel de Desenvolvedor</a>.</li>
+                <li>Verifique se o domínio está em <strong>App Domains</strong>.</li>
+                <li>Verifique se o App está em modo <strong>Live</strong> (Produção).</li>
+              </ul>
+            </div>
 
             <p className="text-[10px] text-muted-foreground mt-2 text-center bg-muted/50 p-2 rounded-md">
               <strong>Páginas não aparecem?</strong> Se a Página estiver em um Gerenciador de Negócios (BM), você precisa ir em <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-primary hover:underline">Configurações do Negócio</a> {'>'} Usuários {'>'} Pessoas, selecionar seu nome e clicar em "Adicionar Ativos" para atribuir a Página e a Conta do Instagram diretamente ao seu perfil do Facebook.
