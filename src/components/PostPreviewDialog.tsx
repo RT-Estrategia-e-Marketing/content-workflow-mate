@@ -107,16 +107,17 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
     // Calc Unix timestamp if scheduling
     let scheduledUnix: number | undefined = undefined;
-    if (!publishNow && post.scheduledDate && post.scheduledTime) {
-      const dateTimeStr = `${post.scheduledDate}T${post.scheduledTime}:00`;
+    if (!publishNow && date && scheduledTime) {
+      const dateTimeStr = `${date}T${scheduledTime}:00`;
       const dateObj = new Date(dateTimeStr);
       if (!isNaN(dateObj.getTime())) {
         scheduledUnix = Math.floor(dateObj.getTime() / 1000);
         
         // Meta requirement: must be between 15 mins and 75 days in future
+        // We use 20 mins as a safety buffer
         const nowUnix = Math.floor(Date.now() / 1000);
-        if (scheduledUnix < nowUnix + (15 * 60)) {
-          toast.warning('O agendamento deve ser pelo menos 15 minutos no futuro. Publicando agora...');
+        if (scheduledUnix < nowUnix + (20 * 60)) {
+          toast.warning('O agendamento deve ser pelo menos 20 minutos no futuro. Publicando agora...');
           scheduledUnix = undefined;
         }
       }
@@ -124,15 +125,15 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
     try {
       // 1. Post to Facebook
-      if (post.platform === 'facebook' || post.platform === 'both') {
+      if (platform === 'facebook' || platform === 'both') {
         const action = scheduledUnix ? 'Agendando' : 'Publicando';
         toast.info(`${action} no Facebook...`);
         await publishToFacebook({
           pageId: client.meta_page_id,
           accessToken: client.meta_access_token,
-          caption: post.caption,
-          imageUrl: post.imageUrl,
-          videoUrl: post.videoUrl,
+          caption: caption,
+          imageUrl: mainImage,
+          videoUrl: videoUrl,
           scheduledPublishTime: scheduledUnix
         });
         successCount++;
@@ -140,18 +141,18 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       }
 
       // 2. Post to Instagram
-      if ((post.platform === 'instagram' || post.platform === 'both') && client.meta_ig_account_id) {
+      if ((platform === 'instagram' || platform === 'both') && client.meta_ig_account_id) {
         const action = scheduledUnix ? 'Agendando' : 'Publicando';
         toast.info(`${action} no Instagram...`);
         await publishToInstagram({
           pageId: client.meta_page_id,
           igAccountId: client.meta_ig_account_id,
           accessToken: client.meta_access_token,
-          caption: post.caption,
-          imageUrl: post.imageUrl,
-          videoUrl: post.videoUrl,
-          images: post.images,
-          type: post.type,
+          caption: caption,
+          imageUrl: mainImage,
+          videoUrl: videoUrl,
+          images: carouselImages,
+          type: type,
           videoThumbnailUrl: post.videoThumbnailUrl,
           scheduledPublishTime: scheduledUnix
         });
@@ -160,8 +161,18 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       }
 
       if (successCount > 0) {
-        movePost(post.id, 'scheduled');
-        toast.success('Post movido para Agendado!');
+        // Update post with current state before moving to scheduled
+        updatePost(post.id, {
+          caption,
+          scheduledDate: date,
+          scheduledTime,
+          imageUrl: mainImage,
+          videoUrl,
+          images: carouselImages,
+          type,
+          stage: 'scheduled'
+        });
+        toast.success('Post atualizado e movido para Agendado!');
         onOpenChange(false);
       }
     } catch (err: any) {
