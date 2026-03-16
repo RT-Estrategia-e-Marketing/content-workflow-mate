@@ -465,12 +465,29 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
               {post.stage === 'approved' && (
                 <div className="flex flex-col gap-2 pt-2 border-t">
-                  <Button onClick={() => handlePublishToMeta(true)} disabled={isPublishing} className="w-full gap-2">
-                    <Zap className="w-4 h-4 fill-current" /> Publicar Agora
-                  </Button>
-                  <Button variant="outline" onClick={() => handlePublishToMeta(false)} disabled={isPublishing} className="w-full gap-2">
-                    <CalendarDays className="w-4 h-4" /> Agendar no Meta
-                  </Button>
+                  {post.publishedAt && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-green-600 dark:text-green-400">Post publicado com sucesso! ✅</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {post.platform === 'instagram' && '📸 Publicado no Instagram'}
+                          {post.platform === 'facebook' && '👍 Publicado no Facebook'}
+                          {post.platform === 'both' && '📸 Publicado no Instagram e 👍 no Facebook'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {!post.publishedAt && (
+                    <>
+                      <Button onClick={() => handlePublishToMeta(true)} disabled={isPublishing} className="w-full gap-2">
+                        <Zap className="w-4 h-4 fill-current" /> Publicar Agora
+                      </Button>
+                      <Button variant="outline" onClick={() => handlePublishToMeta(false)} disabled={isPublishing} className="w-full gap-2">
+                        <CalendarDays className="w-4 h-4" /> Agendar no Meta
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
 

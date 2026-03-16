@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDateBR } from '@/lib/utils';
-import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle } from 'lucide-react';
+import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -214,6 +214,13 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
           <p className="text-[8px] text-muted-foreground font-medium">📅 {formatDateBR(post.scheduledDate)}</p>
           {post.scheduledTime && <p className="text-[8px] text-muted-foreground font-medium">⏰ {post.scheduledTime}</p>}
         </div>
+
+        {post.stage === 'approved' && post.publishedAt && (
+          <div className="mt-1 flex items-center gap-1 p-1.5 bg-green-500/10 border border-green-500/20 rounded text-[9px] text-green-600 dark:text-green-400">
+            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+            <span>Publicado com sucesso! ✅</span>
+          </div>
+        )}
 
         {lastAdjustment && (
           <div className="mt-1 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive line-clamp-2">
