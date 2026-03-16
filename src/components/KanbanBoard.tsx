@@ -111,20 +111,20 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     }
 
     try {
+      const publishPostNow = httpsCallable(functions, 'publishPostNow');
       if (scheduledUnix) {
-        // Agendamento Interno (PostFlow Scheduler)
-        await movePost(post.id, 'scheduled', { 
-          scheduledUnix,
-          scheduledDate: post.scheduledDate,
-          scheduledTime: post.scheduledTime
-        });
-        toast.success('Post agendado no sistema PostFlow! 🚀');
+        // Agendamento Nativo no Meta
+        const result: any = await publishPostNow({ postId: post.id, scheduledUnix });
+        if (result.data.success) {
+          toast.success('Post agendado no Meta com sucesso! 🚀');
+        } else {
+          throw new Error(result.data.message || 'Erro ao agendar');
+        }
       } else {
-        // Publicação Direta (via Backend)
-        const publishPostNow = httpsCallable(functions, 'publishPostNow');
+        // Publicação Imediata (via Backend)
         const result: any = await publishPostNow({ postId: post.id });
         if (result.data.success) {
-          toast.success('Post publicado com sucesso via PostFlow! ✨');
+          toast.success('Post publicado com sucesso! ✨');
         } else {
           throw new Error(result.data.message || 'Erro desconhecido');
         }
