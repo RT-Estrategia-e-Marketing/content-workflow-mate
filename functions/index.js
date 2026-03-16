@@ -187,7 +187,7 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
 
     // Atualiza status no banco
     await postDoc.ref.update({
-      stage: scheduledUnix ? 'scheduled' : 'approved',
+      stage: scheduledUnix ? 'scheduled' : 'published',
       published_at: scheduledUnix ? null : admin.firestore.FieldValue.serverTimestamp(),
       scheduled_on_meta: !!scheduledUnix,
       meta_ids: { fb: results.fb, ig: results.ig }
@@ -256,7 +256,7 @@ exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onR
 
       // Sucesso
       await doc.ref.update({
-        stage: 'approved',
+        stage: 'published',
         published_at: admin.firestore.FieldValue.serverTimestamp(),
         meta_ids: { fb: results.fb, ig: results.ig }
       });

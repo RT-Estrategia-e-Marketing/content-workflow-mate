@@ -46,6 +46,7 @@ const STAGE_COLORS: Record<string, string> = {
   client_approval: 'bg-purple-400',
   approved: 'bg-green-400',
   scheduled: 'bg-sky-400',
+  published: 'bg-emerald-500',
 };
 
 interface PostCardProps {
@@ -215,8 +216,8 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
           {post.scheduledTime && <p className="text-[8px] text-muted-foreground font-medium">⏰ {post.scheduledTime}</p>}
         </div>
 
-        {post.stage === 'approved' && post.publishedAt && (
-          <div className="mt-1 flex items-center gap-1 p-1.5 bg-green-500/10 border border-green-500/20 rounded text-[9px] text-green-600 dark:text-green-400">
+        {post.stage === 'published' && post.publishedAt && (
+          <div className="mt-1 flex items-center gap-1 p-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
             <span>Publicado com sucesso! ✅</span>
           </div>

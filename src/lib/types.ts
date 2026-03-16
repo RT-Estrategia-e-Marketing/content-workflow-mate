@@ -1,6 +1,6 @@
 export type PostType = 'image' | 'reels' | 'carousel' | 'story';
 export type Platform = 'instagram' | 'facebook' | 'both';
-export type KanbanStage = 'content' | 'design' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled' | 'trash';
+export type KanbanStage = 'content' | 'design' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled' | 'published' | 'trash';
 
 export interface PostComment {
   id: string;
@@ -57,6 +57,7 @@ export const KANBAN_STAGES: { key: KanbanStage; label: string }[] = [
   { key: 'client_approval', label: 'Aprovação do Cliente' },
   { key: 'approved', label: 'Aprovado' },
   { key: 'scheduled', label: 'Agendado' },
+  { key: 'published', label: 'Publicado' },
 ];
 
 export const MOCK_CLIENTS: Client[] = [
