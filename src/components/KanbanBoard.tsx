@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDateBR } from '@/lib/utils';
-import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share } from 'lucide-react';
+import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -218,6 +218,19 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
         {lastAdjustment && (
           <div className="mt-1 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive line-clamp-2">
             💬 {lastAdjustment.text}
+          </div>
+        )}
+
+        {post.stage === 'scheduled' && post.publishingError && (
+          <div className="mt-1 flex items-center gap-1 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive">
+            <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+            <span className="line-clamp-2">Erro ao publicar: {post.publishingError}</span>
+          </div>
+        )}
+
+        {post.stage === 'scheduled' && !post.publishingError && (
+          <div className="mt-1 flex items-center gap-1 p-1.5 bg-sky-500/10 border border-sky-500/20 rounded text-[9px] text-sky-600 dark:text-sky-400">
+            ⏰ Publicação automática agendada
           </div>
         )}
 

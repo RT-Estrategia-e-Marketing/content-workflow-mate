@@ -12,7 +12,7 @@ import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap, Edit2, Image, Film, Images, Instagram, Facebook, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Link2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap, Edit2, Image, Film, Images, Instagram, Facebook, X, Clock, AlertCircle, Ban, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useState, useRef, DragEvent, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -117,8 +117,18 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       images: finalImages,
       videoUrl: type === 'reels' ? videoUrl : undefined,
     });
-    setEditing(false);
-    toast.success('Alterações salvas!');
+
+    // Se o post já está agendado e a data/hora mudou, atualiza o scheduled_unix também
+    if (post.stage === 'scheduled' && (date !== post.scheduledDate || scheduledTime !== post.scheduledTime)) {
+      const dateObj = new Date(`${date}T${scheduledTime}:00`);
+      if (!isNaN(dateObj.getTime())) {
+        const newUnix = Math.floor(dateObj.getTime() / 1000);
+        await updatePost(post.id, { scheduledUnix: newUnix });
+        toast.success(`Agendamento atualizado para ${date} às ${scheduledTime}!`);
+      }
+    } else {
+      toast.success('Alterações salvas!');
+    }
   };
 
   const resetEdit = () => {
@@ -141,6 +151,25 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     const link = `${window.location.origin}/approve/${post.approvalLink}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copiado!');
+  };
+
+  const handleCancelSchedule = async () => {
+    await updatePost(post.id, { stage: 'approved', scheduledUnix: undefined, publishingError: undefined });
+    toast.success('Agendamento cancelado. Post voltou para Aprovado.');
+  };
+
+  const handleReschedule = async () => {
+    if (!date || !scheduledTime) return toast.error('Defina uma data e horário.');
+    const dateObj = new Date(`${date}T${scheduledTime}:00`);
+    if (isNaN(dateObj.getTime())) return toast.error('Data ou horário inválidos.');
+    const newUnix = Math.floor(dateObj.getTime() / 1000);
+    const nowUnix = Math.floor(Date.now() / 1000);
+    if (newUnix <= nowUnix) return toast.error('A nova data/hora deve ser no futuro.');
+    await updatePost(post.id, { scheduledUnix: newUnix, scheduledDate: date, scheduledTime, publishingError: undefined });
+    if (post.platform === 'instagram' || post.platform === 'both')
+      toast.success(`"${post.title}" reagendado no Instagram para ${date} às ${scheduledTime}! ⏰`);
+    if (post.platform === 'facebook' || post.platform === 'both')
+      toast.success(`"${post.title}" reagendado no Facebook para ${date} às ${scheduledTime}! ⏰`);
   };
 
   const handlePublishToMeta = async (publishNow: boolean = false) => {
@@ -441,6 +470,46 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                   </Button>
                   <Button variant="outline" onClick={() => handlePublishToMeta(false)} disabled={isPublishing} className="w-full gap-2">
                     <CalendarDays className="w-4 h-4" /> Agendar no Meta
+                  </Button>
+                </div>
+              )}
+
+              {post.stage === 'scheduled' && (
+                <div className="flex flex-col gap-3 pt-2 border-t">
+                  {/* Status do agendamento */}
+                  {post.publishingError ? (
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-destructive">Erro ao publicar</p>
+                        <p className="text-xs text-destructive/80 mt-0.5">{post.publishingError}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-sky-500/10 border border-sky-500/20">
+                      <Clock className="w-4 h-4 text-sky-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-sky-600 dark:text-sky-400">Agendado para publicação automática</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">📅 {post.scheduledDate} às {post.scheduledTime}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reagendar: nova data/hora */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground">Atualizar data/hora:</p>
+                    <div className="flex gap-2">
+                      <DatePicker value={date} onChange={setDate} />
+                      <TimePicker value={scheduledTime} onChange={setScheduledTime} />
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleReschedule} className="w-full gap-2">
+                      <RefreshCw className="w-3.5 h-3.5" /> Atualizar Agendamento
+                    </Button>
+                  </div>
+
+                  {/* Cancelar agendamento */}
+                  <Button size="sm" variant="ghost" onClick={handleCancelSchedule} className="w-full gap-2 text-muted-foreground hover:text-destructive">
+                    <Ban className="w-3.5 h-3.5" /> Cancelar Agendamento
                   </Button>
                 </div>
               )}
