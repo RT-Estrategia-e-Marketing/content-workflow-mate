@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stage", "order": "ASCENDING" },
+        { "fieldPath": "scheduled_unix", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
