@@ -118,13 +118,25 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
           scheduledDate: post.scheduledDate,
           scheduledTime: post.scheduledTime
         });
-        toast.success(`Post agendado para ${post.scheduledDate} às ${post.scheduledTime}! ⏰`);
+        const platform = post.platform;
+        if (platform === 'instagram' || platform === 'both')
+          toast.success(`"${post.title}" agendado no Instagram para ${post.scheduledDate} às ${post.scheduledTime}! ⏰`);
+        if (platform === 'facebook' || platform === 'both')
+          toast.success(`"${post.title}" agendado no Facebook para ${post.scheduledDate} às ${post.scheduledTime}! ⏰`);
       } else {
         // Publicação Imediata (via Backend)
         const publishPostNow = httpsCallable(functions, 'publishPostNow');
         const result: any = await publishPostNow({ postId: post.id });
         if (result.data.success) {
-          toast.success('Post publicado com sucesso! ✨');
+          const { title, platform, results: res, errors } = result.data;
+          if (platform === 'instagram' || platform === 'both') {
+            if (res?.ig) toast.success(`"${title}" publicado no Instagram! 📸`);
+            else if (errors?.some((e: string) => e.startsWith('IG:'))) toast.error(`Erro ao publicar "${title}" no Instagram.`);
+          }
+          if (platform === 'facebook' || platform === 'both') {
+            if (res?.fb) toast.success(`"${title}" publicado no Facebook! 👍`);
+            else if (errors?.some((e: string) => e.startsWith('FB:'))) toast.error(`Erro ao publicar "${title}" no Facebook.`);
+          }
         } else {
           throw new Error(result.data.message || 'Erro desconhecido');
         }

@@ -193,7 +193,7 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
       meta_ids: { fb: results.fb, ig: results.ig }
     });
 
-    return { success: true, results };
+    return { success: true, results, title: post.title, platform: post.platform, errors: results.errors };
   } catch (e) {
     functions.logger.error("Erro em publishPostNow:", e);
     throw new functions.https.HttpsError('internal', e.message);

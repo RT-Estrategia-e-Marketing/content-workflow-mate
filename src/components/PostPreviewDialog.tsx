@@ -177,7 +177,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               scheduledDate: date,
               scheduledTime
             });
-            toast.success(`Post agendado para ${date} às ${scheduledTime}! ⏰ Ele será publicado automaticamente.`);
+            if (post.platform === 'instagram' || post.platform === 'both')
+              toast.success(`"${post.title}" agendado no Instagram para ${date} às ${scheduledTime}! ⏰`);
+            if (post.platform === 'facebook' || post.platform === 'both')
+              toast.success(`"${post.title}" agendado no Facebook para ${date} às ${scheduledTime}! ⏰`);
             onOpenChange(false);
             return;
           } catch (error: any) {
@@ -200,8 +203,16 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       const publishPostNow = httpsCallable(functions, 'publishPostNow');
       const result: any = await publishPostNow({ postId: post.id });
       if (result.data.success) {
-        toast.success('Post publicado com sucesso! ✨');
-          onOpenChange(false);
+        const { title, platform, results: res, errors } = result.data;
+        if (platform === 'instagram' || platform === 'both') {
+          if (res?.ig) toast.success(`"${title}" publicado no Instagram! 📸`);
+          else if (errors?.some((e: string) => e.startsWith('IG:'))) toast.error(`Erro ao publicar "${title}" no Instagram.`);
+        }
+        if (platform === 'facebook' || platform === 'both') {
+          if (res?.fb) toast.success(`"${title}" publicado no Facebook! 👍`);
+          else if (errors?.some((e: string) => e.startsWith('FB:'))) toast.error(`Erro ao publicar "${title}" no Facebook.`);
+        }
+        onOpenChange(false);
       } else {
         throw new Error(result.data.message || 'Erro desconhecido');
       }
