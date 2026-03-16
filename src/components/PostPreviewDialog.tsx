@@ -101,11 +101,8 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       finalImageUrl = carouselImages[0] || '';
     }
 
-    let finalScheduledUnix: number | undefined = undefined;
-    if (date && scheduledTime) {
-      const dateObj = new Date(`${date}T${scheduledTime}:00`);
-      if (!isNaN(dateObj.getTime())) finalScheduledUnix = Math.floor(dateObj.getTime() / 1000);
-    }
+    // scheduledUnix agora é definido apenas no momento do agendamento real com o Meta
+    // para evitar agendamento interno no PostFlow.
 
     await updatePost(post.id, {
       title, 
@@ -114,7 +111,6 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       platform,
       scheduledDate: date,
       scheduledTime,
-      scheduledUnix: finalScheduledUnix,
       ideaText: ideaText.trim() || undefined,
       referenceLink: referenceLink.trim() || undefined,
       imageUrl: finalImageUrl,
@@ -209,7 +205,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
       const publishPostNow = httpsCallable(functions, 'publishPostNow');
       const result: any = await publishPostNow({ postId: post.id });
       if (result.data.success) {
-        toast.success('Post publicado com sucesso via PostFlow! ✨');
+        toast.success('Post publicado com sucesso! ✨');
           onOpenChange(false);
       } else {
         throw new Error(result.data.message || 'Erro desconhecido');
