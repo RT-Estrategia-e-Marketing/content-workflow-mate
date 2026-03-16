@@ -204,7 +204,9 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
  * Worker agendado que roda a cada 5 minutos.
  * Publica no Meta todos os posts cujo horário de agendamento chegou.
  */
-exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
+exports.processScheduledPosts = functions
+  .runWith({ timeoutSeconds: 540, memory: '256MB' })
+  .pubsub.schedule('every 5 minutes').onRun(async (context) => {
   const nowUnix = Math.floor(Date.now() / 1000);
   functions.logger.info(`Cronjob iniciado em ${new Date().toISOString()}. Buscando posts <= ${nowUnix}`);
 
@@ -226,6 +228,9 @@ exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onR
     const postId = doc.id;
 
     try {
+      // Marca como 'publishing' para evitar re-publicação caso o cron rode novamente antes de terminar
+      await doc.ref.update({ stage: 'publishing' });
+
       if (!clientsCache[post.client_id]) {
         const clientDoc = await db.collection('clients').doc(post.client_id).get();
         clientsCache[post.client_id] = clientDoc.data();

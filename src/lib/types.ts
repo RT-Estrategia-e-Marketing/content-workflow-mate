@@ -1,6 +1,6 @@
 export type PostType = 'image' | 'reels' | 'carousel' | 'story';
 export type Platform = 'instagram' | 'facebook' | 'both';
-export type KanbanStage = 'content' | 'design' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled' | 'published' | 'trash';
+export type KanbanStage = 'content' | 'design' | 'internal_approval' | 'adjustments' | 'client_approval' | 'approved' | 'scheduled' | 'publishing' | 'published' | 'trash';
 
 export interface PostComment {
   id: string;
