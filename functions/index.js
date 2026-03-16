@@ -26,7 +26,6 @@ async function publishMedia(postData, clientData, scheduledUnix = null) {
   const { meta_access_token, meta_page_id, meta_ig_account_id } = clientData;
   const results = { fb: null, ig: null, errors: [] };
 
-  const { default: fetch } = await import('node-fetch');
 
   functions.logger.info(`Iniciando publishMedia para plataforma: ${platform}`, { type, image_url, video_url });
 
@@ -232,8 +231,7 @@ exports.exchangeMetaToken = functions.region('us-central1').https.onCall(async (
     const clientId = process.env.META_CLIENT_ID || (functions.config().meta ? functions.config().meta.client_id : null);
     const clientSecret = process.env.META_CLIENT_SECRET || (functions.config().meta ? functions.config().meta.client_secret : null);
 
-    const { default: fetch } = await import('node-fetch');
-    const longLivedUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
+      const longLivedUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
     
     const r1 = await fetch(longLivedUrl);
     const d1 = await r1.json();
