@@ -19,9 +19,9 @@ function translateMetaError(message) {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Função interna para disparar publicação "AGORA" (Facebook/Instagram).
+ * Função interna para disparar publicação "AGORA" ou "AGENDADA" (Facebook/Instagram).
  */
-async function publishMedia(postData, clientData) {
+async function publishMedia(postData, clientData, scheduledUnix = null) {
   const { caption, image_url, video_url, images, type, platform } = postData;
   const { meta_access_token, meta_page_id, meta_ig_account_id } = clientData;
   const results = { fb: null, ig: null, errors: [] };
@@ -47,6 +47,11 @@ async function publishMedia(postData, clientData) {
       } else {
         endpoint += '/feed';
         params.append('message', caption || '');
+      }
+
+      if (scheduledUnix) {
+        params.append('scheduled_publish_time', scheduledUnix);
+        params.append('published', 'false');
       }
 
       const res = await fetch(endpoint, { method: 'POST', body: params });
@@ -76,12 +81,18 @@ async function publishMedia(postData, clientData) {
           } else {
             p.append('image_url', url);
           }
+          if (scheduledUnix) {
+            p.append('scheduled_publish_time', scheduledUnix);
+          }
           const r = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media`, { method: 'POST', body: p });
           const d = await r.json();
           if (d.id) itemIds.push(d.id);
           else functions.logger.error(`Erro ao criar item do carrossel:`, d.error);
         }
         const cp = new URLSearchParams({ access_token: meta_access_token, caption: caption || '', media_type: 'CAROUSEL', children: itemIds.join(',') });
+        if (scheduledUnix) {
+          cp.append('scheduled_publish_time', scheduledUnix);
+        }
         const cr = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media`, { method: 'POST', body: cp });
         const cd = await cr.json();
         creationId = cd.id;
@@ -93,6 +104,9 @@ async function publishMedia(postData, clientData) {
           cp.append('video_url', video_url || image_url);
         } else {
           cp.append('image_url', image_url);
+        }
+        if (scheduledUnix) {
+          cp.append('scheduled_publish_time', scheduledUnix);
         }
         const cr = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media`, { method: 'POST', body: cp });
         const cd = await cr.json();
@@ -119,14 +133,19 @@ async function publishMedia(postData, clientData) {
         functions.logger.warn("Avisando: Tentando publicar mesmo sem status FINISHED confirmado.");
       }
 
-      // Publish
-      functions.logger.info(`Publicando container Instagram: ${creationId}`);
-      const publishParams = new URLSearchParams({ access_token: meta_access_token, creation_id: creationId });
-      const publishRes = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media_publish`, { method: 'POST', body: publishParams });
-      const publishData = await publishRes.json();
-      if (publishData.error) throw new Error(publishData.error.message);
-      results.ig = publishData.id;
-      functions.logger.info(`Instagram OK: ${publishData.id}`);
+      if (scheduledUnix) {
+        results.ig = creationId; // No Instagram agendado, o ID do container é o que importa
+        functions.logger.info(`Instagram AGENDADO: ${creationId}`);
+      } else {
+        // Publish
+        functions.logger.info(`Publicando container Instagram: ${creationId}`);
+        const publishParams = new URLSearchParams({ access_token: meta_access_token, creation_id: creationId });
+        const publishRes = await fetch(`https://graph.facebook.com/v19.0/${meta_ig_account_id}/media_publish`, { method: 'POST', body: publishParams });
+        const publishData = await publishRes.json();
+        if (publishData.error) throw new Error(publishData.error.message);
+        results.ig = publishData.id;
+        functions.logger.info(`Instagram OK: ${publishData.id}`);
+      }
     } catch (e) {
       functions.logger.error(`Erro Instagram: ${e.message}`);
       results.errors.push(`IG: ${translateMetaError(e.message)}`);
@@ -142,7 +161,7 @@ async function publishMedia(postData, clientData) {
  */
 exports.publishPostNow = functions.region('us-central1').https.onCall(async (data, context) => {
   try {
-    const { postId } = data;
+    const { postId, scheduledUnix } = data;
     if (!postId) throw new Error("postId é obrigatório.");
 
     const postDoc = await db.collection('posts').doc(postId).get();
@@ -155,7 +174,7 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
 
     if (!client.meta_access_token) throw new Error("Integração Meta não configurada.");
 
-    const results = await publishMedia(post, client);
+    const results = await publishMedia(post, client, scheduledUnix);
 
     if (results.errors.length > 0) {
       // Se era para postar em ambos e um deu certo, consideramos sucesso parcial
@@ -169,8 +188,9 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
 
     // Atualiza status no banco
     await postDoc.ref.update({
-      stage: 'approved',
-      published_at: admin.firestore.FieldValue.serverTimestamp(),
+      stage: scheduledUnix ? 'scheduled' : 'approved',
+      published_at: scheduledUnix ? null : admin.firestore.FieldValue.serverTimestamp(),
+      scheduled_on_meta: !!scheduledUnix,
       meta_ids: { fb: results.fb, ig: results.ig }
     });
 
@@ -204,6 +224,11 @@ exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onR
   for (const doc of snapshot.docs) {
     const post = doc.data();
     const postId = doc.id;
+
+    if (post.scheduled_on_meta) {
+      functions.logger.info(`Post ${postId} já agendado no Meta. Pulando...`);
+      continue;
+    }
 
     try {
       if (!clientsCache[post.client_id]) {
