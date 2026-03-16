@@ -171,22 +171,17 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
         if (scheduledUnix > nowUnix) {
           setIsPublishing(true);
           try {
-            const publishPostNow = httpsCallable(functions, 'publishPostNow');
-            const result: any = await publishPostNow({ 
-              postId: post.id, 
-              scheduledUnix 
+            await updatePost(post.id, {
+              stage: 'scheduled',
+              scheduledUnix,
+              scheduledDate: date,
+              scheduledTime
             });
-            
-            if (result.data.success) {
-              toast.success('Post agendado no Meta com sucesso! 🚀');
-              onOpenChange(false);
-            } else {
-              throw new Error(result.data.message || 'Erro ao agendar');
-            }
+            toast.success(`Post agendado para ${date} às ${scheduledTime}! ⏰ Ele será publicado automaticamente.`);
+            onOpenChange(false);
             return;
           } catch (error: any) {
-            console.error('Schedule Error:', error);
-            toast.error(`Erro ao agendar no Meta: ${error.message}`);
+            toast.error('Erro ao salvar agendamento.');
             setIsPublishing(false);
             return;
           }

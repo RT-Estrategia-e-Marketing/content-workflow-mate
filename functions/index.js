@@ -202,7 +202,7 @@ exports.publishPostNow = functions.region('us-central1').https.onCall(async (dat
 
 /**
  * Worker agendado que roda a cada 5 minutos.
- * Atualmente apenas loga se houver posts agendados no banco (agendamento interno desativado).
+ * Publica no Meta todos os posts cujo horário de agendamento chegou.
  */
 exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
   const nowUnix = Math.floor(Date.now() / 1000);
@@ -218,7 +218,56 @@ exports.processScheduledPosts = functions.pubsub.schedule('every 5 minutes').onR
     return null;
   }
 
-  functions.logger.info(`Aviso: ${snapshot.size} posts estão com status agendado no banco, mas o agendamento interno foi desativado. Use o agendamento nativo da Meta.`);
+  functions.logger.info(`Processando ${snapshot.size} posts agendados.`);
+  const clientsCache = {};
+
+  for (const doc of snapshot.docs) {
+    const post = doc.data();
+    const postId = doc.id;
+
+    try {
+      if (!clientsCache[post.client_id]) {
+        const clientDoc = await db.collection('clients').doc(post.client_id).get();
+        clientsCache[post.client_id] = clientDoc.data();
+      }
+      const client = clientsCache[post.client_id];
+
+      if (!client || !client.meta_access_token) {
+        throw new Error("Integração Meta não configurada para este cliente.");
+      }
+
+      // Publica AGORA (sem scheduledUnix - publicação imediata)
+      const results = await publishMedia(post, client, null);
+
+      // Se todas as plataformas solicitadas falharam
+      if (results.errors.length > 0) {
+        const isBoth = post.platform === 'both';
+        const totalFailed = (isBoth && (!results.fb || !results.ig)) || (!isBoth && results.errors.length > 0);
+
+        if (totalFailed) {
+          await doc.ref.update({
+            stage: 'adjustments',
+            publishing_error: results.errors.join(' | ')
+          });
+          functions.logger.error(`Falha parcial ou total no post ${postId}: ${results.errors.join(' | ')}`);
+          continue;
+        }
+      }
+
+      // Sucesso
+      await doc.ref.update({
+        stage: 'approved',
+        published_at: admin.firestore.FieldValue.serverTimestamp(),
+        meta_ids: { fb: results.fb, ig: results.ig }
+      });
+      functions.logger.info(`Post ${postId} publicado com sucesso.`);
+
+    } catch (err) {
+      functions.logger.error(`Erro crítico no post ${postId}:`, err);
+      await doc.ref.update({ stage: 'adjustments', publishing_error: err.message });
+    }
+  }
+
   return null;
 });
 

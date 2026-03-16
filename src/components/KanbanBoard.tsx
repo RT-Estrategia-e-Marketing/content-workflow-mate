@@ -111,17 +111,17 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     }
 
     try {
-      const publishPostNow = httpsCallable(functions, 'publishPostNow');
       if (scheduledUnix) {
-        // Agendamento Nativo no Meta
-        const result: any = await publishPostNow({ postId: post.id, scheduledUnix });
-        if (result.data.success) {
-          toast.success('Post agendado no Meta com sucesso! 🚀');
-        } else {
-          throw new Error(result.data.message || 'Erro ao agendar');
-        }
+        // Agendamento Interno: salva no banco e o cron publica na hora certa
+        await movePost(post.id, 'scheduled', {
+          scheduledUnix,
+          scheduledDate: post.scheduledDate,
+          scheduledTime: post.scheduledTime
+        });
+        toast.success(`Post agendado para ${post.scheduledDate} às ${post.scheduledTime}! ⏰`);
       } else {
         // Publicação Imediata (via Backend)
+        const publishPostNow = httpsCallable(functions, 'publishPostNow');
         const result: any = await publishPostNow({ postId: post.id });
         if (result.data.success) {
           toast.success('Post publicado com sucesso! ✨');
@@ -135,7 +135,7 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
       if (msg.includes('whitelist')) {
         toast.error("Erro de Whitelist: Se seu App na Meta está em modo 'Live', mude para 'Development' para testar.");
       } else {
-        toast.error(`Falha ao publicar: ${msg}`);
+        toast.error(`Falha: ${msg}`);
       }
     } finally {
       setIsPublishing(false);
