@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Client } from '@/lib/types';
 import { MetricCard } from './MetricCard';
 import { 
@@ -25,6 +26,7 @@ interface ReportsTabProps {
 
 export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTabProps) {
   const [loading, setLoading] = useState(false);
+  const [tokenError, setTokenError] = useState(false);
   const [fbData, setFbData] = useState<any>(null);
   const [igData, setIgData] = useState<any>(null);
   const [adsData, setAdsData] = useState<any>(null);
@@ -36,6 +38,7 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
   });
 
   const hasMeta = !!client.meta_access_token;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (hasMeta) {
@@ -58,30 +61,32 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       // Fetch all enabled insights in parallel without breaking if one fails
       const promises = [];
       
-      if (client.meta_page_id && visibleSections.facebook) {
-        promises.push(getPageInsights(client.meta_page_id, client.meta_access_token, apiDateRange).then(setFbData).catch(e => console.error('FB Error:', e)));
+    const handleError = (e: any) => {
+      console.error('Meta API specific error:', e);
+      if (e.message?.includes('access token') || e.message?.includes('Session') || e.message?.includes('expirou')) {
+        setTokenError(true);
       }
-      
-      if (client.meta_ig_account_id && visibleSections.instagram) {
-        promises.push(getInstagramInsights(client.meta_ig_account_id, client.meta_access_token).then(setIgData).catch(e => console.error('IG Error:', e)));
-      }
+    };
 
-      if (client.meta_ads_account_id && visibleSections.ads) {
-        promises.push(getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange).then(setAdsData).catch(e => console.error('Ads Error:', e)));
-      }
-
-      await Promise.all(promises);
-      
-      if (promises.length === 0) {
-        toast.info('Nenhuma conta Meta vinculada/selecionada para este cliente.');
-      }
-    } catch (error) {
-      console.error('Error fetching insights overall:', error);
-      toast.error('Erro ao processar dados do Meta. Verifique as configurações.');
-    } finally {
-      setLoading(false);
+    if (client.meta_page_id && visibleSections.facebook) {
+      promises.push(getPageInsights(client.meta_page_id, client.meta_access_token, apiDateRange).then(setFbData).catch(handleError));
     }
-  };
+    
+    if (client.meta_ig_account_id && visibleSections.instagram) {
+      promises.push(getInstagramInsights(client.meta_ig_account_id, client.meta_access_token).then(setIgData).catch(handleError));
+    }
+
+    if (client.meta_ads_account_id && visibleSections.ads) {
+      promises.push(getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange).then(setAdsData).catch(handleError));
+    }
+
+    await Promise.all(promises);
+  } catch (error: any) {
+    console.error('Error fetching insights overall:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getMetricValue = (data: any, metricName: string) => {
     if (!data || !Array.isArray(data)) return 0;
@@ -98,6 +103,25 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
   const handleDownloadPdf = () => {
     window.print();
   };
+
+  if (tokenError) {
+    return (
+      <Card className="border-destructive/20 bg-destructive/5">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h3 className="text-xl font-bold font-display mb-2 text-destructive">Conexão Expirada</h3>
+          <p className="text-muted-foreground max-w-sm mb-6">
+            Sua conexão com o Meta expirou por segurança. Precisamos que você reconecte para acessar os relatórios deste cliente.
+          </p>
+          <Button onClick={() => navigate(`/clients/${client.id}`)} variant="default">
+            Ir para Configurações do Cliente
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!hasMeta) {
     return (
@@ -125,7 +149,7 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
   ];
 
   return (
-    <div className="space-y-6 animate-slide-in">
+    <div className={`space-y-6 animate-slide-in ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Print-only Header */}
       <div className="hidden print:block mb-8 border-b pb-6">
         <div className="flex items-center justify-between">
@@ -207,20 +231,20 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
           title="Alcance Total" 
-          value={(
+          value={loading ? "..." : (
             getMetricValue(fbData, 'page_impressions_unique') + 
             getMetricValue(igData, 'reach') + 
             getAdsMetric(adsData, 'reach')
           ).toLocaleString()} 
-          change={12.5} 
+          change={loading ? undefined : 12.5} 
           icon={Users} 
           description="vs. último período"
         />
         {visibleSections.facebook && (
           <MetricCard 
             title="Facebook Eng." 
-            value={getMetricValue(fbData, 'page_post_engagements').toLocaleString()} 
-            change={-2.4} 
+            value={loading ? "..." : getMetricValue(fbData, 'page_post_engagements').toLocaleString()} 
+            change={loading ? undefined : -2.4} 
             icon={Facebook} 
             description="Interações na página"
           />
@@ -228,8 +252,8 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
         {visibleSections.instagram && (
           <MetricCard 
             title="IG Novos Seguidores" 
-            value={getMetricValue(igData, 'follower_count').toLocaleString()} 
-            change={5.1} 
+            value={loading ? "..." : getMetricValue(igData, 'follower_count').toLocaleString()} 
+            change={loading ? undefined : 5.1} 
             icon={Instagram} 
             description="No período selecionado"
           />
@@ -237,8 +261,8 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
         {visibleSections.ads && (
           <MetricCard 
             title="Investimento Ads" 
-            value={`R$ ${Number(getAdsMetric(adsData, 'spend')).toFixed(2)}`} 
-            change={0} 
+            value={loading ? "..." : `R$ ${Number(getAdsMetric(adsData, 'spend')).toFixed(2)}`} 
+            change={loading ? undefined : 0} 
             icon={BarChart3} 
             description="Gasto no período"
           />
