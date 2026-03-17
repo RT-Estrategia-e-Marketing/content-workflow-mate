@@ -61,34 +61,42 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       // Fetch all enabled insights in parallel without breaking if one fails
       const promises = [];
       
-    const handleError = (e: any) => {
-      console.error('Meta API specific error:', e);
+    const handleError = (e: any, source: string) => {
+      console.error(`Meta API error (${source}):`, e);
       const msg = e.message || '';
-      // Only set tokenError if it's clearly a session/token issue.
-      // Codes 102, 190 are common for expired/invalid tokens.
+      
       if (
         msg.includes('access token') || 
         msg.includes('Session has expired') || 
         msg.includes('expirou') ||
         msg.includes('invalid access token')
       ) {
-        // If it's just a permission issue (not an expiration), don't show the full "Expired" blocker
         if (!msg.includes('permissions') && !msg.includes('permission')) {
           setTokenError(true);
+        } else {
+          toast.error(`Erro de permissão (${source}): ${msg}`);
         }
+      } else {
+        toast.error(`Erro ao carregar ${source}: ${msg}`);
       }
     };
 
     if (client.meta_page_id && visibleSections.facebook) {
-      promises.push(getPageInsights(client.meta_page_id, client.meta_access_token, apiDateRange).then(setFbData).catch(handleError));
+      promises.push(getPageInsights(client.meta_page_id, client.meta_access_token, apiDateRange)
+        .then(setFbData)
+        .catch(e => handleError(e, 'Facebook')));
     }
     
     if (client.meta_ig_account_id && visibleSections.instagram) {
-      promises.push(getInstagramInsights(client.meta_ig_account_id, client.meta_access_token).then(setIgData).catch(handleError));
+      promises.push(getInstagramInsights(client.meta_ig_account_id, client.meta_access_token)
+        .then(setIgData)
+        .catch(e => handleError(e, 'Instagram')));
     }
 
     if (client.meta_ads_account_id && visibleSections.ads) {
-      promises.push(getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange).then(setAdsData).catch(handleError));
+      promises.push(getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange)
+        .then(setAdsData)
+        .catch(e => handleError(e, 'Ads')));
     }
 
     await Promise.all(promises);
