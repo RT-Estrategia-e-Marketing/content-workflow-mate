@@ -63,8 +63,19 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       
     const handleError = (e: any) => {
       console.error('Meta API specific error:', e);
-      if (e.message?.includes('access token') || e.message?.includes('Session') || e.message?.includes('expirou')) {
-        setTokenError(true);
+      const msg = e.message || '';
+      // Only set tokenError if it's clearly a session/token issue.
+      // Codes 102, 190 are common for expired/invalid tokens.
+      if (
+        msg.includes('access token') || 
+        msg.includes('Session has expired') || 
+        msg.includes('expirou') ||
+        msg.includes('invalid access token')
+      ) {
+        // If it's just a permission issue (not an expiration), don't show the full "Expired" blocker
+        if (!msg.includes('permissions') && !msg.includes('permission')) {
+          setTokenError(true);
+        }
       }
     };
 
