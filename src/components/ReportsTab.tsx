@@ -111,12 +111,15 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
     if (!data || !Array.isArray(data)) return 0;
     const metric = data.find((m: any) => m.name === metricName);
     if (!metric || !metric.values || metric.values.length === 0) return 0;
-    return metric.values[metric.values.length - 1].value || 0;
+    
+    // Sum all values in the period instead of just the last one
+    return metric.values.reduce((acc: number, curr: any) => acc + (Number(curr.value) || 0), 0);
   };
 
   const getAdsMetric = (data: any, field: string) => {
     if (!data || !Array.isArray(data) || data.length === 0) return 0;
-    return data[0][field] || 0;
+    // Ads insights usually return a single aggregate object in the array
+    return Number(data[0][field]) || 0;
   };
 
   const handleDownloadPdf = () => {
@@ -270,11 +273,10 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
         )}
         {visibleSections.instagram && (
           <MetricCard 
-            title="IG Novos Seguidores" 
-            value={loading ? "..." : getMetricValue(igData, 'follower_count').toLocaleString()} 
-            change={loading ? undefined : 5.1} 
+            title="IG Total Seguidores" 
+            value={loading ? "..." : (getMetricValue(igData, 'follower_count') || 0).toLocaleString()} 
             icon={Instagram} 
-            description="No período selecionado"
+            description="Acumulado no período"
           />
         )}
         {visibleSections.ads && (
