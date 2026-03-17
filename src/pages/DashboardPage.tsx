@@ -22,15 +22,15 @@ export default function DashboardPage() {
   const myProfile = profiles.find(p => p.user_id === user?.uid);
 
   const myPosts = posts.filter(p => p.assignedTo && p.assignedTo.includes(user?.uid || ''));
-  const pendingPosts = myPosts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled');
-  const donePosts = myPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled');
+  const pendingPosts = myPosts.filter(p => !['approved', 'scheduled', 'published'].includes(p.stage));
+  const donePosts = myPosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage));
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());
 
   const stats = [
     { label: 'Clientes', value: clients.length, icon: Users, color: 'text-primary' },
     { label: 'Posts Totais', value: posts.length, icon: FileText, color: 'text-accent' },
-    { label: 'Aprovados', value: posts.filter(p => p.stage === 'approved' || p.stage === 'scheduled').length, icon: CheckCircle, color: 'text-success' },
-    { label: 'Pendentes', value: posts.filter(p => p.stage !== 'approved' && p.stage !== 'scheduled').length, icon: Clock, color: 'text-warning' },
+    { label: 'Aprovados', value: posts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: CheckCircle, color: 'text-success' },
+    { label: 'Pendentes', value: posts.filter(p => !['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: Clock, color: 'text-warning' },
   ];
 
   const taskList = taskTab === 'pending' ? pendingPosts.filter(p => !overduePosts.includes(p)) : taskTab === 'overdue' ? overduePosts : donePosts;
@@ -134,7 +134,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
             {clients.map(client => {
               const clientPosts = posts.filter(p => p.clientId === client.id);
-              const approvedCount = clientPosts.filter(p => p.stage === 'approved' || p.stage === 'scheduled').length;
+              const approvedCount = clientPosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage)).length;
               const isUrl = client.logo && client.logo.startsWith('http');
               return (
                 <button
