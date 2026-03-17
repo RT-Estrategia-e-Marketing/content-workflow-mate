@@ -178,9 +178,7 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
 export async function getPageInsights(pageId: string, accessToken: string, dateRange = 'last_30d') {
     const metrics = [
         'page_impressions_unique',
-        'page_post_engagements',
-        'page_fan_adds_unique',
-        'page_views_total'
+        'page_post_engagements'
     ].join(',');
 
     try {
@@ -210,9 +208,8 @@ export async function getPageInsights(pageId: string, accessToken: string, dateR
 export async function getInstagramInsights(igAccountId: string, accessToken: string) {
     // Note: Instagram account insights are more restricted with periods and metrics
     const metrics = [
-        'impressions',
         'reach',
-        'profile_views'
+        'follower_count'
     ].join(',');
 
     try {
