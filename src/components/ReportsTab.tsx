@@ -48,7 +48,6 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
 
     setLoading(true);
     try {
-      // Mapping project dateRange to API date_preset or period
       let apiDateRange = dateRange;
       if (dateRange === 'today') apiDateRange = 'today';
       if (dateRange === 'yesterday') apiDateRange = 'yesterday';
@@ -56,26 +55,44 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       if (dateRange === 'last_30d') apiDateRange = 'last_30d';
       if (dateRange === 'this_month') apiDateRange = 'this_month';
 
-      if (client.meta_page_id) {
-        const fbResponse = await getPageInsights(client.meta_page_id, client.meta_access_token);
-        setFbData(fbResponse);
+      // Fetch all enabled insights in parallel without breaking if one fails
+      const promises = [];
+      
+      if (client.meta_page_id && visibleSections.facebook) {
+        promises.push(getPageInsights(client.meta_page_id, client.meta_access_token, apiDateRange).then(setFbData).catch(e => console.error('FB Error:', e)));
+      }
+      
+      if (client.meta_ig_account_id && visibleSections.instagram) {
+        promises.push(getInstagramInsights(client.meta_ig_account_id, client.meta_access_token).then(setIgData).catch(e => console.error('IG Error:', e)));
       }
 
-      if (client.meta_ig_account_id) {
-        const igResponse = await getInstagramInsights(client.meta_ig_account_id, client.meta_access_token);
-        setIgData(igResponse);
+      if (client.meta_ads_account_id && visibleSections.ads) {
+        promises.push(getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange).then(setAdsData).catch(e => console.error('Ads Error:', e)));
       }
 
-      if (client.meta_ads_account_id) {
-        const adsResponse = await getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange);
-        setAdsData(adsResponse);
+      await Promise.all(promises);
+      
+      if (promises.length === 0) {
+        toast.info('Nenhuma conta Meta vinculada/selecionada para este cliente.');
       }
     } catch (error) {
-      console.error('Error fetching insights:', error);
-      toast.error('Erro ao buscar dados do Meta. Verifique a conexão.');
+      console.error('Error fetching insights overall:', error);
+      toast.error('Erro ao processar dados do Meta. Verifique as configurações.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getMetricValue = (data: any, metricName: string) => {
+    if (!data || !Array.isArray(data)) return 0;
+    const metric = data.find((m: any) => m.name === metricName);
+    if (!metric || !metric.values || metric.values.length === 0) return 0;
+    return metric.values[metric.values.length - 1].value || 0;
+  };
+
+  const getAdsMetric = (data: any, field: string) => {
+    if (!data || !Array.isArray(data) || data.length === 0) return 0;
+    return data[0][field] || 0;
   };
 
   const handleDownloadPdf = () => {
@@ -190,7 +207,11 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard 
           title="Alcance Total" 
-          value="45.289" 
+          value={(
+            getMetricValue(fbData, 'page_impressions_unique') + 
+            getMetricValue(igData, 'reach') + 
+            getAdsMetric(adsData, 'reach')
+          ).toLocaleString()} 
           change={12.5} 
           icon={Users} 
           description="vs. último período"
@@ -198,7 +219,7 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
         {visibleSections.facebook && (
           <MetricCard 
             title="Facebook Eng." 
-            value="8.432" 
+            value={getMetricValue(fbData, 'page_post_engagements').toLocaleString()} 
             change={-2.4} 
             icon={Facebook} 
             description="Interações na página"
@@ -206,17 +227,17 @@ export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTa
         )}
         {visibleSections.instagram && (
           <MetricCard 
-            title="IG Seguidores" 
-            value="1.240" 
+            title="IG Novos Seguidores" 
+            value={getMetricValue(igData, 'follower_count').toLocaleString()} 
             change={5.1} 
             icon={Instagram} 
-            description="Novos seguidores"
+            description="No período selecionado"
           />
         )}
         {visibleSections.ads && (
           <MetricCard 
             title="Investimento Ads" 
-            value="R$ 450,00" 
+            value={`R$ ${Number(getAdsMetric(adsData, 'spend')).toFixed(2)}`} 
             change={0} 
             icon={BarChart3} 
             description="Gasto no período"

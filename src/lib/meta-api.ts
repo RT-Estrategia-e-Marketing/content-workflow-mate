@@ -175,7 +175,7 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
 /**
  * Buscar Insights da Página do Facebook
  */
-export async function getPageInsights(pageId: string, accessToken: string, period = 'day') {
+export async function getPageInsights(pageId: string, accessToken: string, dateRange = 'last_30d') {
     const metrics = [
         'page_impressions_unique',
         'page_post_engagements',
@@ -184,9 +184,19 @@ export async function getPageInsights(pageId: string, accessToken: string, perio
     ].join(',');
 
     try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=${period}&access_token=${accessToken}`);
+        // Facebook Page Insights support date_preset
+        const url = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&date_preset=${dateRange}&access_token=${accessToken}`;
+        const res = await fetch(url);
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+        
+        if (data.error) {
+            console.error('Meta API Error (Page Insights):', data.error);
+            // Don't throw if it's just a permissions issue for specific metrics
+            if (data.error.code === 10 || data.error.code === 200) {
+                console.warn('Falta de permissão para métricas específicas do Facebook.');
+            }
+            throw new Error(data.error.message);
+        }
         return data.data;
     } catch (err: any) {
         console.error('Erro ao buscar insights do Facebook:', err);
@@ -198,17 +208,23 @@ export async function getPageInsights(pageId: string, accessToken: string, perio
  * Buscar Insights do Instagram Business Account
  */
 export async function getInstagramInsights(igAccountId: string, accessToken: string) {
+    // Note: Instagram account insights are more restricted with periods and metrics
     const metrics = [
         'impressions',
         'reach',
-        'profile_views',
-        'follower_count'
+        'profile_views'
     ].join(',');
 
     try {
-        const res = await fetch(`https://graph.facebook.com/v19.0/${igAccountId}/insights?metric=${metrics}&period=day&access_token=${accessToken}`);
+        // IG insights for account usually work best with period=day (returns a series)
+        const url = `https://graph.facebook.com/v19.0/${igAccountId}/insights?metric=${metrics}&period=day&access_token=${accessToken}`;
+        const res = await fetch(url);
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+        
+        if (data.error) {
+            console.error('Meta API Error (IG Insights):', data.error);
+            throw new Error(data.error.message);
+        }
         return data.data;
     } catch (err: any) {
         console.error('Erro ao buscar insights do Instagram:', err);
