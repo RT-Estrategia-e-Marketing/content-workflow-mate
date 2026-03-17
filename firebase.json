@@ -1,1 +1,1 @@
-{"functions": {"source": "functions"}, "hosting": {"public": "public"}, "firestore": {"indexes": "firestore.indexes.json"}}
+{"functions": {"source": "functions"}, "hosting": {"public": "dist"}, "firestore": {"indexes": "firestore.indexes.json"}}
