@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/clients', icon: Users, label: 'Clientes' },
+  { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
   { to: '/trash', icon: Trash2, label: 'Lixeira' },
   { to: '/settings', icon: Settings, label: 'Configurações' },

@@ -20,9 +20,10 @@ import { toast } from 'sonner';
 
 interface ReportsTabProps {
   client: Client;
+  dateRange?: string;
 }
 
-export default function ReportsTab({ client }: ReportsTabProps) {
+export default function ReportsTab({ client, dateRange = 'last_30d' }: ReportsTabProps) {
   const [loading, setLoading] = useState(false);
   const [fbData, setFbData] = useState<any>(null);
   const [igData, setIgData] = useState<any>(null);
@@ -40,25 +41,33 @@ export default function ReportsTab({ client }: ReportsTabProps) {
     if (hasMeta) {
       fetchInsights();
     }
-  }, [client]);
+  }, [client, dateRange]);
 
   const fetchInsights = async () => {
     if (!client.meta_access_token) return;
-    
+
     setLoading(true);
     try {
+      // Mapping project dateRange to API date_preset or period
+      let apiDateRange = dateRange;
+      if (dateRange === 'today') apiDateRange = 'today';
+      if (dateRange === 'yesterday') apiDateRange = 'yesterday';
+      if (dateRange === 'last_7d') apiDateRange = 'last_7d';
+      if (dateRange === 'last_30d') apiDateRange = 'last_30d';
+      if (dateRange === 'this_month') apiDateRange = 'this_month';
+
       if (client.meta_page_id) {
         const fbResponse = await getPageInsights(client.meta_page_id, client.meta_access_token);
         setFbData(fbResponse);
       }
-      
+
       if (client.meta_ig_account_id) {
         const igResponse = await getInstagramInsights(client.meta_ig_account_id, client.meta_access_token);
         setIgData(igResponse);
       }
 
       if (client.meta_ads_account_id) {
-        const adsResponse = await getAdsInsights(client.meta_ads_account_id, client.meta_access_token);
+        const adsResponse = await getAdsInsights(client.meta_ads_account_id, client.meta_access_token, apiDateRange);
         setAdsData(adsResponse);
       }
     } catch (error) {
@@ -100,16 +109,35 @@ export default function ReportsTab({ client }: ReportsTabProps) {
 
   return (
     <div className="space-y-6 animate-slide-in">
+      {/* Print-only Header */}
+      <div className="hidden print:block mb-8 border-b pb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {client.logo && client.logo.startsWith('http') ? (
+              <img src={client.logo} alt="" className="w-12 h-12 object-contain" />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                {client.name.charAt(0)}
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold font-display">Relatório de Desempenho</h1>
+              <p className="text-muted-foreground">{client.name}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium">Período: {dateRange}</p>
+            <p className="text-[10px] text-muted-foreground uppercase mt-1">Gerado por PostFlow</p>
+          </div>
+        </div>
+      </div>
+
       {/* Header Actions */}
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchInsights} disabled={loading}>
             <TrendingUp className="w-4 h-4 mr-2" />
             {loading ? 'Atualizando...' : 'Atualizar Dados'}
-          </Button>
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtros
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -125,24 +153,24 @@ export default function ReportsTab({ client }: ReportsTabProps) {
                 <h4 className="font-medium leading-none">Métricas Visíveis</h4>
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="fb-toggle" 
-                      checked={visibleSections.facebook} 
+                    <Checkbox
+                      id="fb-toggle"
+                      checked={visibleSections.facebook}
                       onCheckedChange={(checked) => setVisibleSections(prev => ({ ...prev, facebook: checked === true }))}
                     />
                     <Label htmlFor="fb-toggle">Facebook Insights</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="ig-toggle" 
-                      checked={visibleSections.instagram} 
+                    <Checkbox
+                      id="ig-toggle"
+                      checked={visibleSections.instagram}
                       onCheckedChange={(checked) => setVisibleSections(prev => ({ ...prev, instagram: checked === true }))}
                     />
                     <Label htmlFor="ig-toggle">Instagram Insights</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="ads-toggle" 
+                    <Checkbox
+                      id="ads-toggle"
                       checked={visibleSections.ads}
                       onCheckedChange={(checked) => setVisibleSections(prev => ({ ...prev, ads: checked === true }))}
                     />

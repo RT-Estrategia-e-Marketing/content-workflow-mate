@@ -20,6 +20,7 @@ import PrivacyPage from "@/pages/PrivacyPage";
 import TermsPage from "@/pages/TermsPage";
 import NotFound from "./pages/NotFound";
 import TrashPage from '@/pages/TrashPage';
+import ReportsPage from '@/pages/ReportsPage';
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/clients/:clientId" element={<ClientDetailPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/trash" element={<TrashPage />} />

@@ -19,9 +19,7 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import MetaIcon from '@/components/icons/MetaIcon';
 import NewPostModal from '@/components/NewPostModal';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReportsTab from '@/components/ReportsTab';
-import { BarChart3, Kanban } from 'lucide-react';
+import { Kanban } from 'lucide-react';
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -402,28 +400,7 @@ export default function ClientDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="kanban" className="w-full">
-        <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-2">
-          <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="kanban" className="flex items-center gap-2">
-              <Kanban className="w-4 h-4" />
-              Kanban
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Relatórios
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="kanban" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-          <KanbanBoard clientId={clientId!} />
-        </TabsContent>
-        
-        <TabsContent value="reports" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-          <ReportsTab client={client} />
-        </TabsContent>
-      </Tabs>
+      <KanbanBoard clientId={clientId!} />
     </div>
   );
 }
