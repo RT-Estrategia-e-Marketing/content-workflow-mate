@@ -19,6 +19,9 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import MetaIcon from '@/components/icons/MetaIcon';
 import NewPostModal from '@/components/NewPostModal';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ReportsTab from '@/components/ReportsTab';
+import { BarChart3, Kanban } from 'lucide-react';
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -43,6 +46,7 @@ export default function ClientDetailPage() {
   const [metaIgAccountId, setMetaIgAccountId] = useState('');
   const [metaIgAccountName, setMetaIgAccountName] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
+  const [metaAdsAccountId, setMetaAdsAccountId] = useState('');
 
   const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
   const [loadingPages, setLoadingPages] = useState(false);
@@ -113,6 +117,7 @@ export default function ClientDetailPage() {
     setMetaIgAccountId(client.meta_ig_account_id || '');
     setMetaIgAccountName(client.meta_ig_account_name || '');
     setMetaAccessToken(client.meta_access_token || '');
+    setMetaAdsAccountId(client.meta_ads_account_id || '');
     setMetaPages([]);
     setMetaOpen(true);
   };
@@ -123,7 +128,8 @@ export default function ClientDetailPage() {
       meta_page_name: metaPageName.trim(),
       meta_ig_account_id: metaIgAccountId.trim(),
       meta_ig_account_name: metaIgAccountName.trim(),
-      meta_access_token: metaAccessToken.trim()
+      meta_access_token: metaAccessToken.trim(),
+      meta_ads_account_id: metaAdsAccountId.trim()
     });
     setMetaOpen(false);
     toast.success('Integração com Meta atualizada');
@@ -135,13 +141,15 @@ export default function ClientDetailPage() {
       meta_page_name: '',
       meta_ig_account_id: '',
       meta_ig_account_name: '',
-      meta_access_token: ''
+      meta_access_token: '',
+      meta_ads_account_id: ''
     });
     setMetaPageId('');
     setMetaPageName('');
     setMetaIgAccountId('');
     setMetaIgAccountName('');
     setMetaAccessToken('');
+    setMetaAdsAccountId('');
     setMetaPages([]);
     setMetaOpen(false);
     toast.success('Cliente desconectado do Meta');
@@ -372,6 +380,18 @@ export default function ClientDetailPage() {
                     Se o ID acima estiver vazio, verifique se a sua Página do Facebook está conectada a uma Conta Profissional do Instagram.
                   </p>
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">ID da Conta de Anúncios (Opcional)</label>
+                  <Input
+                    placeholder="Ex: 1234567890"
+                    value={metaAdsAccountId}
+                    onChange={e => setMetaAdsAccountId(e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1 text-center">
+                    Insira o ID numérico da conta de anúncios para gerar relatórios de tráfego pago.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -382,7 +402,28 @@ export default function ClientDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <KanbanBoard clientId={clientId!} />
+      <Tabs defaultValue="kanban" className="w-full">
+        <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-2">
+          <TabsList className="bg-muted/50 p-1">
+            <TabsTrigger value="kanban" className="flex items-center gap-2">
+              <Kanban className="w-4 h-4" />
+              Kanban
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Relatórios
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="kanban" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <KanbanBoard clientId={clientId!} />
+        </TabsContent>
+        
+        <TabsContent value="reports" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+          <ReportsTab client={client} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

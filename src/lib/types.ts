@@ -47,6 +47,11 @@ export interface Client {
   meta_page_name?: string;
   meta_ig_account_id?: string;
   meta_ig_account_name?: string;
+  meta_ads_account_id?: string;
+  report_settings?: {
+    visible_sections?: string[]; // fb, ig, ads
+    custom_metrics?: string[];
+  };
 }
 
 export const KANBAN_STAGES: { key: KanbanStage; label: string }[] = [

@@ -171,3 +171,73 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
         throw new Error(translateMetaError(err));
     }
 }
+
+/**
+ * Buscar Insights da Página do Facebook
+ */
+export async function getPageInsights(pageId: string, accessToken: string, period = 'day') {
+    const metrics = [
+        'page_impressions_unique',
+        'page_post_engagements',
+        'page_fan_adds_unique',
+        'page_views_total'
+    ].join(',');
+
+    try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=${period}&access_token=${accessToken}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.data;
+    } catch (err: any) {
+        console.error('Erro ao buscar insights do Facebook:', err);
+        throw new Error(translateMetaError(err));
+    }
+}
+
+/**
+ * Buscar Insights do Instagram Business Account
+ */
+export async function getInstagramInsights(igAccountId: string, accessToken: string) {
+    const metrics = [
+        'impressions',
+        'reach',
+        'profile_views',
+        'follower_count'
+    ].join(',');
+
+    try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/${igAccountId}/insights?metric=${metrics}&period=day&access_token=${accessToken}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.data;
+    } catch (err: any) {
+        console.error('Erro ao buscar insights do Instagram:', err);
+        throw new Error(translateMetaError(err));
+    }
+}
+
+/**
+ * Buscar Insights de Anúncios (Ads)
+ */
+export async function getAdsInsights(adAccountId: string, accessToken: string, dateRange = 'last_30d') {
+    const fields = [
+        'spend',
+        'impressions',
+        'clicks',
+        'cpc',
+        'ctr',
+        'reach'
+    ].join(',');
+
+    try {
+        // Formato: act_AD_ACCOUNT_ID
+        const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+        const res = await fetch(`https://graph.facebook.com/v19.0/${id}/insights?fields=${fields}&date_preset=${dateRange}&access_token=${accessToken}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.data;
+    } catch (err: any) {
+        console.error('Erro ao buscar insights de Ads:', err);
+        throw new Error(translateMetaError(err));
+    }
+}
