@@ -426,6 +426,28 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
               {post.imageUrl && (type === 'carousel' || type === 'story' ? <PreviewCarousel images={post.images || []} /> : <img src={post.imageUrl} className="w-full rounded-lg border object-contain" />)}
               {post.type === 'reels' && post.videoUrl && <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />}
 
+              {(post.stage === 'content' || post.stage === 'design') && (post.ideaText || post.referenceLink) && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-border space-y-2">
+                  <p className="text-xs font-semibold text-foreground/70 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-primary" /> Briefing / Ideia
+                  </p>
+                  {post.ideaText && <p className="text-sm whitespace-pre-wrap">{post.ideaText}</p>}
+                  {post.referenceLink && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Link2 className="w-3.5 h-3.5 text-primary" />
+                      <a 
+                        href={post.referenceLink.startsWith('http') ? post.referenceLink : `https://${post.referenceLink}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline font-medium"
+                      >
+                        {post.referenceLink}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {post.caption && (
                 <div className="p-3 bg-secondary rounded-lg">
                   <p className="text-xs font-medium text-secondary-foreground mb-1">Legenda:</p>
