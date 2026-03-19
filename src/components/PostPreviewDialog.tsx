@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
-import { formatDateBR } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Link2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap, Edit2, Image, Film, Images, Instagram, Facebook, X, Clock, AlertCircle, Ban, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { formatDateBR, downloadUrl } from '@/lib/utils';
+import { ArrowLeft, ArrowRight, Link2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap, Edit2, Image, Film, Images, Instagram, Facebook, X, Clock, AlertCircle, Ban, RefreshCw, CheckCircle2, Download } from 'lucide-react';
 import { useState, useRef, DragEvent, useEffect } from 'react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -20,11 +20,34 @@ import { storage, functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-function PreviewCarousel({ images }: { images: string[] }) {
+function PreviewCarousel({ images, postTitle }: { images: string[], postTitle: string }) {
   const [idx, setIdx] = useState(0);
+
+  const handleDownload = async () => {
+    const url = images[idx];
+    if (!url) return;
+    const ext = url.split(/[#?]/)[0].split('.').pop()?.toLowerCase() || 'jpg';
+    const filename = `${postTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slide_${idx + 1}.${ext}`;
+    
+    toast.promise(downloadUrl(url, filename), {
+      loading: 'Iniciando download...',
+      success: 'Download sugerido!',
+      error: 'Erro ao baixar mídia.',
+    });
+  };
+
   return (
-    <div className="relative rounded-lg border border-border overflow-hidden bg-muted">
+    <div className="relative rounded-lg border border-border overflow-hidden bg-muted group">
       <img src={images[idx]} alt={`Slide ${idx + 1}`} className="w-full object-contain" />
+      
+      <button 
+        onClick={handleDownload}
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground shadow-sm z-10"
+        title="Baixar esta mídia"
+      >
+        <Download className="w-4 h-4" />
+      </button>
+
       {images.length > 1 && (
         <>
           <button onClick={() => setIdx((idx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-background/80 rounded-full shadow hover:bg-background">
@@ -300,6 +323,48 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setDragIdx(null);
   };
 
+  const handleDownloadMedia = async (url: string, suffix: string = '') => {
+    if (!url) return;
+    const ext = url.split(/[#?]/)[0].split('.').pop()?.toLowerCase() || 'jpg';
+    const filename = `${post.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${suffix ? '_' + suffix : ''}.${ext}`;
+    
+    toast.promise(downloadUrl(url, filename), {
+      loading: 'Iniciando download...',
+      success: 'Download sugerido!',
+      error: 'Erro ao baixar mídia.',
+    });
+  };
+
+  const handleDownloadAll = async () => {
+    const mediaToDownload = post.type === 'carousel' || post.type === 'story' 
+      ? (post.images || []) 
+      : (post.type === 'reels' ? [post.videoUrl, post.imageUrl] : [post.imageUrl]);
+    
+    const validMedia = mediaToDownload.filter(Boolean) as string[];
+    
+    if (validMedia.length === 0) {
+      toast.error('Nenhuma mídia disponível para baixar.');
+      return;
+    }
+
+    toast.info(`Iniciando download de ${validMedia.length} arquivo(s)...`);
+
+    for (let i = 0; i < validMedia.length; i++) {
+      const url = validMedia[i];
+      const ext = url.split(/[#?]/)[0].split('.').pop()?.toLowerCase() || 'jpg';
+      const suffix = validMedia.length > 1 ? `_${i + 1}` : '';
+      const filename = `${post.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${suffix}.${ext}`;
+      
+      try {
+        await downloadUrl(url, filename);
+        // Small delay to prevent browser from blocking multiple downloads
+        if (i < validMedia.length - 1) await new Promise(r => setTimeout(r, 500));
+      } catch (err) {
+        console.error(`Failed to download ${url}`, err);
+      }
+    }
+  };
+
   const handleMultiFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -326,6 +391,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
             <div className="flex items-center justify-between">
               <DialogTitle className="font-display">{editing ? 'Editar Post' : post.title}</DialogTitle>
               <div className="flex items-center gap-1">
+                {!editing && (
+                  <Button variant="ghost" size="sm" onClick={handleDownloadAll} className="h-8 text-xs">
+                    <Download className="w-4 h-4 mr-1" /> Baixar Tudo
+                  </Button>
+                )}
                 {!editing && (
                   <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
                     <Edit2 className="w-4 h-4 mr-1" /> Editar
@@ -423,8 +493,37 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </span>
               </div>
 
-              {post.imageUrl && (type === 'carousel' || type === 'story' ? <PreviewCarousel images={post.images || []} /> : <img src={post.imageUrl} className="w-full rounded-lg border object-contain" />)}
-              {post.type === 'reels' && post.videoUrl && <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />}
+              {post.imageUrl && (
+                <div className="relative group">
+                  {type === 'carousel' || type === 'story' ? (
+                    <PreviewCarousel images={post.images || []} postTitle={post.title} />
+                  ) : (
+                    <>
+                      <img src={post.imageUrl} className="w-full rounded-lg border object-contain" />
+                      <button 
+                        onClick={() => handleDownloadMedia(post.imageUrl!)}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground shadow-sm z-10"
+                        title="Baixar imagem"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {post.type === 'reels' && post.videoUrl && (
+                <div className="relative group">
+                  <video src={post.videoUrl} controls className="w-full rounded-lg max-h-64" />
+                  <button 
+                    onClick={() => handleDownloadMedia(post.videoUrl!, 'video')}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground shadow-sm z-10"
+                    title="Baixar vídeo"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
               {(post.stage === 'content' || post.stage === 'design') && (post.ideaText || post.referenceLink) && (
                 <div className="p-3 bg-muted/50 rounded-lg border border-border space-y-2">

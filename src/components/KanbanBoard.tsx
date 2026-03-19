@@ -3,8 +3,8 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
-import { formatDateBR } from '@/lib/utils';
-import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { formatDateBR, downloadUrl } from '@/lib/utils';
+import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle, CheckCircle2, Download } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
@@ -155,6 +155,25 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     }
   };
 
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentMediaUrl = allImages[slideIdx] || allImages[0];
+    if (!currentMediaUrl) {
+      toast.error('Nenhuma mídia encontrada para baixar.');
+      return;
+    }
+    
+    // Extract extension or default to jpg
+    const ext = currentMediaUrl.split(/[#?]/)[0].split('.').pop()?.toLowerCase() || 'jpg';
+    const filename = `${post.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${slideIdx + 1}.${ext}`;
+    
+    toast.promise(downloadUrl(currentMediaUrl, filename), {
+      loading: 'Iniciando download...',
+      success: 'Download concluído!',
+      error: 'Erro ao baixar mídia.',
+    });
+  };
+
   return (
     <>
       <div
@@ -171,6 +190,15 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
         {allImages.length > 0 ? (
           <div className={`relative rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
             <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+            
+            <button 
+              onClick={handleDownload}
+              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center z-20 hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
+              title="Baixar mídia"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+
             {allImages.length > 1 && (
               <>
                 {slideIdx > 0 && (
