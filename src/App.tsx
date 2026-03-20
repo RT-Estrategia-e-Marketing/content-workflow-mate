@@ -50,8 +50,8 @@ const App = () => (
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/trash" element={<TrashPage />} />
-                <Route path="/internal-approve/:token" element={<ApprovalPage isInternal />} />
               </Route>
+              <Route path="/internal-approve/:token" element={<AuthGuard><ApprovalPage isInternal /></AuthGuard>} />
               <Route path="/approve/:token" element={<ApprovalPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />

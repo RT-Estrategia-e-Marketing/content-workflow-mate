@@ -262,7 +262,11 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const postsFromToken = globalPosts.filter(p => (isInternal ? p.internalApprovalLink === token : p.approvalLink === token) && 
     ((isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   
-  const displayPosts = postsFromToken.length > 0 ? postsFromToken : localPosts;
+  const displayPosts = (postsFromToken.length > 0 ? postsFromToken : localPosts).sort((a, b) => {
+    const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime || '00:00'}:00`).getTime();
+    const dateB = new Date(`${b.scheduledDate}T${b.scheduledTime || '00:00'}:00`).getTime();
+    return dateA - dateB;
+  });
   const client = postsFromToken.length > 0 
     ? globalClients.find(c => c.id === postsFromToken[0].clientId) 
     : localClient;
