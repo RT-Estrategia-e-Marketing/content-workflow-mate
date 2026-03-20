@@ -213,15 +213,21 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
           return;
         }
 
-        const fetchedPosts = postsSnapshot.docs.map(d => {
-          try {
-            return dbPostToPost(d.id, d.data() as DbPost);
-          } catch (e) {
-            console.error("Error mapping post doc:", d.id, e);
-            return null;
-          }
-        }).filter(Boolean) as Post[];
-        
+        const initialPosts = postsSnapshot.docs.map(d => dbPostToPost(d.id, d.data() as DbPost));
+        let fetchedPosts = initialPosts;
+
+        if (isInternal && initialPosts.length > 0) {
+          const clientId = initialPosts[0].clientId;
+          // Fetch ALL posts for this client in internal_approval stage
+          const allInternalQuery = query(
+            collection(db, 'posts'), 
+            where('clientId', '==', clientId),
+            where('stage', 'in', ['internal_approval', 'adjustments', 'approved', 'scheduled'])
+          );
+          const allInternalSnapshot = await getDocs(allInternalQuery);
+          fetchedPosts = allInternalSnapshot.docs.map(d => dbPostToPost(d.id, d.data() as DbPost));
+        }
+
         const filteredPosts = fetchedPosts.filter(p => 
           (isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || 
           p.stage === 'approved' || 
@@ -377,10 +383,11 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
         {/* Header */}
         <div className="text-center mb-6">
           {isInternal && (
-            <div className="mb-4">
-              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-yellow-400 text-yellow-950 shadow-sm">
-                Aprovação Interna
-              </span>
+            <div className="mb-4 flex justify-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border border-slate-200 shadow-sm">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                <span className="text-[13px] font-medium text-slate-600">Aprovação Interna</span>
+              </div>
             </div>
           )}
           <div className="flex items-center justify-center gap-2 mb-2">
