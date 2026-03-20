@@ -173,7 +173,14 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     if (!post.approvalLink) return toast.error('Link não disponível');
     const link = `${window.location.origin}/approve/${post.approvalLink}`;
     navigator.clipboard.writeText(link);
-    toast.success('Link copiado!');
+    toast.success('Link de aprovação do cliente copiado!');
+  };
+
+  const handleCopyInternalLink = () => {
+    if (!post.internalApprovalLink) return toast.error('Link interno não disponível');
+    const link = `${window.location.origin}/internal-approve/${post.internalApprovalLink}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Link de aprovação interna copiado!');
   };
 
   const handleCancelSchedule = async () => {
@@ -560,7 +567,14 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <p>📅 {formatDateBR(post.scheduledDate)} {post.scheduledTime && `· ⏰ ${post.scheduledTime}`}</p>
-                {post.approvalLink && <button onClick={handleCopyLink} className="text-primary hover:underline italic">Copiar link de aprovação</button>}
+                <div className="flex gap-2">
+                  {post.internalApprovalLink && (
+                    <button onClick={handleCopyInternalLink} className="text-primary hover:underline italic">Link Interno</button>
+                  )}
+                  {post.approvalLink && (
+                    <button onClick={handleCopyLink} className="text-primary hover:underline italic">Link Cliente</button>
+                  )}
+                </div>
               </div>
 
               {post.comments.length > 0 && (

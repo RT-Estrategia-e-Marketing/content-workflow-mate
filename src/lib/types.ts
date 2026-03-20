@@ -30,6 +30,7 @@ export interface Post {
   scheduledUnix?: number;
   videoThumbnailUrl?: string;
   approvalLink?: string;
+  internalApprovalLink?: string;
   publishingError?: string;
   publishedAt?: string;
   comments: PostComment[];

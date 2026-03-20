@@ -36,6 +36,7 @@ export interface DbPost {
   scheduled_time: string | null;
   scheduled_unix: number | null;
   approval_link: string | null;
+  internal_approval_link: string | null;
   publishing_error: string | null;
   published_at: string | null;
   comments: PostComment[];
@@ -72,6 +73,7 @@ export function dbPostToPost(id: string, p: DbPost): Post {
     scheduledTime: p.scheduled_time || undefined,
     scheduledUnix: p.scheduled_unix || undefined,
     approvalLink: p.approval_link || undefined,
+    internalApprovalLink: p.internal_approval_link || undefined,
     publishingError: p.publishing_error || undefined,
     publishedAt: p.published_at || undefined,
     comments: (p.comments || []) as PostComment[],
@@ -198,6 +200,7 @@ export function useAppData() {
         scheduled_time: post.scheduledTime || null,
         scheduled_unix: post.scheduledUnix || null, // Added
         approval_link: null,
+        internal_approval_link: null,
         comments: [],
         created_at: new Date().toISOString()
       };
@@ -226,6 +229,7 @@ export function useAppData() {
     if (data.scheduledTime !== undefined) update.scheduled_time = data.scheduledTime;
     if (data.scheduledUnix !== undefined) update.scheduled_unix = data.scheduledUnix ?? null;
     if (data.approvalLink !== undefined) update.approval_link = data.approvalLink;
+    if (data.internalApprovalLink !== undefined) update.internal_approval_link = data.internalApprovalLink;
     if (data.publishingError !== undefined) update.publishing_error = data.publishingError ?? null;
     if (data.publishedAt !== undefined) update.published_at = data.publishedAt ?? null;
     if (data.comments !== undefined) update.comments = data.comments;
@@ -308,11 +312,29 @@ export function useAppData() {
       const token = existingToken || `${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
       updates.approval_link = token;
 
-      console.log(`Final token assigned: ${token}`);
+      console.log(`Final client token assigned: ${token}`);
 
       const link = `${window.location.origin}/approve/${token}`;
       navigator.clipboard.writeText(link).then(() => {
-        toast.success('Link de aprovação copiado para a área de transferência!');
+        toast.success('Link de aprovação do cliente copiado!');
+      }).catch(() => {
+        toast.info(`Link: ${link}`);
+      });
+    }
+
+    if (newStage === 'internal_approval') {
+      const existingToken = allPosts.find(
+        other => other.clientId === post.clientId && 
+        other.stage === 'internal_approval' && 
+        other.internalApprovalLink
+      )?.internalApprovalLink;
+      
+      const token = existingToken || `int-${post.clientId}-${Math.random().toString(36).substring(2, 10)}`;
+      updates.internal_approval_link = token;
+
+      const link = `${window.location.origin}/internal-approve/${token}`;
+      navigator.clipboard.writeText(link).then(() => {
+        toast.success('Link de aprovação interna copiado!');
       }).catch(() => {
         toast.info(`Link: ${link}`);
       });

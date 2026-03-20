@@ -182,7 +182,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
   );
 }
 
-export default function ApprovalPage() {
+export default function ApprovalPage({ isInternal = false }: { isInternal?: boolean }) {
   const { token } = useParams<{ token: string }>();
   const { posts: globalPosts, clients: globalClients, loading: globalLoading, movePost, updatePost } = useApp();
   const { createNotification } = useNotifications();
@@ -201,7 +201,8 @@ export default function ApprovalPage() {
         console.log("Fetching data for token:", token);
         
         // Fetch posts by token
-        const postsQuery = query(collection(db, 'posts'), where('approval_link', '==', token));
+        const field = isInternal ? 'internal_approval_link' : 'approval_link';
+        const postsQuery = query(collection(db, 'posts'), where(field, '==', token));
         const postsSnapshot = await getDocs(postsQuery);
         
         console.log("Posts found:", postsSnapshot.size);
@@ -222,7 +223,7 @@ export default function ApprovalPage() {
         }).filter(Boolean) as Post[];
         
         const filteredPosts = fetchedPosts.filter(p => 
-          p.stage === 'client_approval' || 
+          (isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || 
           p.stage === 'approved' || 
           p.stage === 'scheduled' || 
           p.stage === 'adjustments'
@@ -252,7 +253,8 @@ export default function ApprovalPage() {
   }, [token]);
 
   // Use global data if available (logged-in admin), otherwise use local data
-  const postsFromToken = globalPosts.filter(p => p.approvalLink === token && (p.stage === 'client_approval' || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
+  const postsFromToken = globalPosts.filter(p => (isInternal ? p.internalApprovalLink === token : p.approvalLink === token) && 
+    ((isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   
   const displayPosts = postsFromToken.length > 0 ? postsFromToken : localPosts;
   const client = postsFromToken.length > 0 
@@ -287,14 +289,18 @@ export default function ApprovalPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center animate-slide-in">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Todos os Posts Aprovados!</h1>
-          <p className="text-gray-500">Obrigado pela aprovação. Os posts serão publicados conforme agendado.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {isInternal ? 'Aprovação Interna Concluída!' : 'Todos os Posts Aprovados!'}
+          </h1>
+          <p className="text-gray-500">
+            {isInternal ? 'Obrigado pela revisão interna.' : 'Obrigado pela aprovação. Os posts serão publicados conforme agendado.'}
+          </p>
         </div>
       </div>
     );
   }
 
-  const pendingPosts = displayPosts.filter(p => p.stage === 'client_approval');
+  const pendingPosts = displayPosts.filter(p => isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval');
 
   const handleApprovePost = (postId: string) => {
     movePost(postId, 'approved');
@@ -307,8 +313,10 @@ export default function ApprovalPage() {
           user_id: memberId,
           post_id: post.id,
           client_id: post.clientId,
-          type: 'client_approval',
-          message: `O cliente ${client?.name || ''} aprovou o post "${post.title}"`,
+          type: isInternal ? 'internal_approval' : 'client_approval',
+          message: isInternal 
+            ? `Aprovação interna realizada para o post "${post.title}"`
+            : `O cliente ${client?.name || ''} aprovou o post "${post.title}"`,
         });
       });
     }
@@ -332,8 +340,10 @@ export default function ApprovalPage() {
           user_id: memberId,
           post_id: post.id,
           client_id: post.clientId,
-          type: 'client_adjustment',
-          message: `O cliente ${client?.name || ''} solicitou ajuste no post "${post.title}": ${feedback}`,
+          type: isInternal ? 'internal_adjustment' : 'client_adjustment',
+          message: isInternal
+            ? `Ajuste interno solicitado no post "${post.title}": ${feedback}`
+            : `O cliente ${client?.name || ''} solicitou ajuste no post "${post.title}": ${feedback}`,
         });
       });
     }
@@ -350,8 +360,10 @@ export default function ApprovalPage() {
             user_id: memberId,
             post_id: p.id,
             client_id: p.clientId,
-            type: 'client_approval',
-            message: `O cliente ${client?.name || ''} aprovou o post "${p.title}"`,
+            type: isInternal ? 'internal_approval' : 'client_approval',
+            message: isInternal
+              ? `Aprovação interna realizada para o post "${p.title}"`
+              : `O cliente ${client?.name || ''} aprovou o post "${p.title}"`,
           });
         });
       }
@@ -372,8 +384,13 @@ export default function ApprovalPage() {
                 <span className="text-2xl">{client.logo}</span>
               )
             )}
-            <h1 className="text-xl font-bold text-gray-900">{client?.name || 'Cliente'}</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {isInternal ? 'Aprovação Interna' : (client?.name || 'Cliente')}
+            </h1>
           </div>
+          {isInternal && client?.name && (
+            <p className="text-xs font-semibold text-primary mb-1">{client.name}</p>
+          )}
           <p className="text-sm text-gray-500">
             {pendingPosts.length} post{pendingPosts.length !== 1 ? 's' : ''} para aprovação
           </p>
