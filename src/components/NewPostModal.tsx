@@ -74,7 +74,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
         if (!files) return;
         const uploads: string[] = [];
         for (const file of Array.from(files)) {
-            if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} muito grande`); continue; }
+            if (file.size > 150 * 1024 * 1024) { toast.error(`${file.name} muito grande (máx. 150MB)`); continue; }
             const ext = file.name.split('.').pop();
             const path = `post-media/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`;
             const storageRef = ref(storage, path);

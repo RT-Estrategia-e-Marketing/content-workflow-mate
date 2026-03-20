@@ -370,6 +370,10 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     if (!files) return;
     const uploads: string[] = [];
     for (const file of Array.from(files)) {
+      if (file.size > 150 * 1024 * 1024) {
+        toast.error(`${file.name} muito grande (máx. 150MB)`);
+        continue;
+      }
       const path = `post-media/${Date.now()}-${file.name}`;
       const storageRef = ref(storage, path);
       try {
