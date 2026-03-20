@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { formatDateBR } from '@/lib/utils';
 import { Post, Client } from '@/lib/types';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfiles } from '@/hooks/useProfiles';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { dbPostToPost, dbClientToClient, DbPost, DbClient } from '@/hooks/useAppData';
@@ -186,6 +188,8 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const { token } = useParams<{ token: string }>();
   const { posts: globalPosts, clients: globalClients, loading: globalLoading, movePost, updatePost } = useApp();
   const { createNotification } = useNotifications();
+  const { user } = useAuth();
+  const { profiles } = useProfiles();
   const [allApproved, setAllApproved] = useState(false);
 
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
@@ -313,11 +317,12 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const pendingPosts = displayPosts.filter(p => isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval');
 
   const handleApprovePost = (postId: string) => {
-    movePost(postId, 'approved');
+    movePost(postId, isInternal ? 'client_approval' : 'approved');
     
     // Notification for approval
     const post = (postsFromToken.length > 0 ? globalPosts : localPosts).find(p => p.id === postId);
     if (post && post.assignedTo && post.assignedTo.length > 0) {
+      const userName = profiles.find(p => p.user_id === user?.uid)?.full_name || 'Um colaborador';
       post.assignedTo.forEach(memberId => {
         createNotification({
           user_id: memberId,
@@ -325,7 +330,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
           client_id: post.clientId,
           type: isInternal ? 'internal_approval' : 'client_approval',
           message: isInternal 
-            ? `Aprovação interna realizada para o post "${post.title}"`
+            ? `O usuário "${userName}" aprovou internamente o post "${post.title}"`
             : `O cliente ${client?.name || ''} aprovou o post "${post.title}"`,
         });
       });
@@ -345,6 +350,10 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
     movePost(postId, 'adjustments');
 
     if (post.assignedTo && post.assignedTo.length > 0) {
+      const userName = isInternal 
+        ? (profiles.find(p => p.user_id === user?.uid)?.full_name || 'Um colaborador')
+        : (client?.name || 'O cliente');
+
       post.assignedTo.forEach(memberId => {
         createNotification({
           user_id: memberId,
@@ -352,8 +361,8 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
           client_id: post.clientId,
           type: isInternal ? 'internal_adjustment' : 'client_adjustment',
           message: isInternal
-            ? `Ajuste interno solicitado no post "${post.title}": ${feedback}`
-            : `O cliente ${client?.name || ''} solicitou ajuste no post "${post.title}": ${feedback}`,
+            ? `O usuário "${userName}" solicitou ajuste no post "${post.title}": ${feedback}`
+            : `O cliente "${userName}" solicitou ajuste no post "${post.title}": ${feedback}`,
         });
       });
     }
@@ -361,10 +370,11 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
 
   const handleApproveAll = () => {
     pendingPosts.forEach(p => {
-      movePost(p.id, 'approved');
+      movePost(p.id, isInternal ? 'client_approval' : 'approved');
       
       // Notification for approval
       if (p.assignedTo && p.assignedTo.length > 0) {
+        const userName = profiles.find(prof => prof.user_id === user?.uid)?.full_name || 'Um colaborador';
         p.assignedTo.forEach(memberId => {
           createNotification({
             user_id: memberId,
@@ -372,7 +382,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
             client_id: p.clientId,
             type: isInternal ? 'internal_approval' : 'client_approval',
             message: isInternal
-              ? `Aprovação interna realizada para o post "${p.title}"`
+              ? `O usuário "${userName}" aprovou internamente o post "${p.title}"`
               : `O cliente ${client?.name || ''} aprovou o post "${p.title}"`,
           });
         });
