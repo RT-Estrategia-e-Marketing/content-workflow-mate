@@ -325,7 +325,7 @@ export function useAppData() {
     if (newStage === 'internal_approval') {
       const existingToken = allPosts.find(
         other => other.clientId === post.clientId && 
-        other.stage === 'internal_approval' && 
+        ['internal_approval', 'adjustments'].includes(other.stage) && 
         other.internalApprovalLink
       )?.internalApprovalLink;
       

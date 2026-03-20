@@ -376,20 +376,29 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
       <div className="max-w-[420px] mx-auto pt-8 px-4">
         {/* Header */}
         <div className="text-center mb-6">
+          {isInternal && (
+            <div className="mb-4">
+              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-yellow-400 text-yellow-950 shadow-sm">
+                Aprovação Interna
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-center gap-2 mb-2">
             {client?.logo && (
               client.logo.startsWith('http') ? (
-                <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-full object-cover" />
+                <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-full object-cover shadow-sm border border-gray-200" />
               ) : (
                 <span className="text-2xl">{client.logo}</span>
               )
             )}
             <h1 className="text-xl font-bold text-gray-900">
-              {isInternal ? 'Aprovação Interna' : (client?.name || 'Cliente')}
+              {client?.name || 'Cliente'}
             </h1>
           </div>
-          {isInternal && client?.name && (
-            <p className="text-xs font-semibold text-primary mb-1">{client.name}</p>
+          {isInternal && (
+            <p className="text-[11px] font-medium text-amber-600 bg-amber-50 inline-block px-2 py-0.5 rounded border border-amber-100 mb-1">
+              Modo de Revisão da Equipe
+            </p>
           )}
           <p className="text-sm text-gray-500">
             {pendingPosts.length} post{pendingPosts.length !== 1 ? 's' : ''} para aprovação
