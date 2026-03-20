@@ -80,7 +80,14 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
     e.stopPropagation();
     const link = `${window.location.origin}/approve/${post.approvalLink}`;
     navigator.clipboard.writeText(link);
-    toast.success('Link copiado!');
+    toast.success('Link de aprovação do cliente copiado!');
+  };
+
+  const handleCopyInternalApprovalLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const link = `${window.location.origin}/internal-approve/${post.internalApprovalLink}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Link de aprovação interna copiado!');
   };
 
   const handleScheduleToMeta = async (e: React.MouseEvent, publishNow: boolean = false) => {
@@ -276,7 +283,16 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
             onClick={handleCopyApprovalLink}
             className="mt-1.5 flex items-center gap-1 text-[10px] text-primary hover:underline"
           >
-            <Copy className="w-3 h-3" /> Copiar link de aprovação
+            <Copy className="w-3 h-3" /> Copiar link do cliente
+          </button>
+        )}
+
+        {post.stage === 'internal_approval' && post.internalApprovalLink && (
+          <button
+            onClick={handleCopyInternalApprovalLink}
+            className="mt-1.5 flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            <Copy className="w-3 h-3" /> Copiar link interno
           </button>
         )}
 
