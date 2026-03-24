@@ -23,6 +23,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
   const [currentSlide, setCurrentSlide] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState<'pending' | 'approved' | 'adjustment'>('pending');
+  const [touchStart, setTouchStart] = useState<number | null>(null);
 
   const allImages = (post.type === 'carousel' || post.type === 'story') && post.images?.length
     ? post.images.filter(Boolean)
@@ -60,6 +61,25 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
     setStatus('adjustment');
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && currentSlide < allImages.length - 1) {
+        setCurrentSlide(p => p + 1);
+      } else if (diff < 0 && currentSlide > 0) {
+        setCurrentSlide(p => p - 1);
+      }
+    }
+    setTouchStart(null);
+  };
+
   return (
     <div className="w-full max-w-[375px] mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-lg mb-6">
       {/* Instagram Header */}
@@ -84,25 +104,38 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
       </div>
 
       {/* Post Media */}
-      <div className={`relative bg-gray-50 ${isVertical ? 'aspect-[9/16]' : ''}`}>
+      <div 
+        className={`relative bg-gray-50 overflow-hidden ${isVertical ? 'aspect-[9/16]' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {post.type === 'reels' && post.videoUrl ? (
           <video src={post.videoUrl} controls className="w-full h-full object-contain" poster={post.imageUrl || undefined} />
         ) : allImages.length > 0 ? (
           <>
-            <img src={allImages[currentSlide] || ''} alt="" className={`w-full ${isVertical ? 'h-full' : ''} object-contain`} />
+            <div className="flex w-full h-full">
+              {allImages.map((img, i) => (
+                <img 
+                  key={i} 
+                  src={img || ''} 
+                  alt="" 
+                  className={`w-full shrink-0 ${isVertical ? 'h-full' : ''} object-contain ${i === currentSlide ? 'block' : 'hidden'}`} 
+                />
+              ))}
+            </div>
             {allImages.length > 1 && (
               <>
                 {currentSlide > 0 && (
-                  <button onClick={() => setCurrentSlide(p => p - 1)} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                  <button onClick={() => setCurrentSlide(p => p - 1)} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center cursor-pointer select-none">
                     <ChevronLeft className="w-4 h-4 text-gray-700" />
                   </button>
                 )}
                 {currentSlide < allImages.length - 1 && (
-                  <button onClick={() => setCurrentSlide(p => p + 1)} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                  <button onClick={() => setCurrentSlide(p => p + 1)} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center cursor-pointer select-none">
                     <ChevronRight className="w-4 h-4 text-gray-700" />
                   </button>
                 )}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
                   {allImages.map((_, i) => (
                     <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentSlide ? 'bg-blue-500' : 'bg-white/60'}`} />
                   ))}
@@ -127,13 +160,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
           <MessageSquare className="w-6 h-6 text-gray-900" />
           <SendIcon className="w-6 h-6 text-gray-900" />
         </div>
-        {allImages.length > 1 && (
-          <div className="flex gap-1">
-            {allImages.map((_, i) => (
-              <div key={i} className={`w-[5px] h-[5px] rounded-full ${i === currentSlide ? 'bg-blue-500' : 'bg-gray-300'}`} />
-            ))}
-          </div>
-        )}
+        {/* External pagination dots removed as per request */}
         <Bookmark className="w-6 h-6 text-gray-900" />
       </div>
 

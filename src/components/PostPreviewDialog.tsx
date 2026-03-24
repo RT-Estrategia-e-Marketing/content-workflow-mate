@@ -22,6 +22,26 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function PreviewCarousel({ images, postTitle }: { images: string[], postTitle: string }) {
   const [idx, setIdx] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && idx < images.length - 1) {
+        setIdx(p => p + 1);
+      } else if (diff < 0 && idx > 0) {
+        setIdx(p => p - 1);
+      }
+    }
+    setTouchStart(null);
+  };
 
   const handleDownload = async () => {
     const url = images[idx];
@@ -37,8 +57,19 @@ function PreviewCarousel({ images, postTitle }: { images: string[], postTitle: s
   };
 
   return (
-    <div className="relative rounded-lg border border-border overflow-hidden bg-muted group">
-      <img src={images[idx]} alt={`Slide ${idx + 1}`} className="w-full object-contain" />
+    <div 
+      className="relative rounded-lg border border-border overflow-hidden bg-muted group flex"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {images.map((img, i) => (
+         <img 
+           key={i} 
+           src={img} 
+           alt={`Slide ${i + 1}`} 
+           className={`w-full shrink-0 object-contain ${i === idx ? 'block' : 'hidden'}`} 
+         />
+      ))}
       
       <button 
         onClick={handleDownload}
@@ -50,12 +81,17 @@ function PreviewCarousel({ images, postTitle }: { images: string[], postTitle: s
 
       {images.length > 1 && (
         <>
-          <button onClick={() => setIdx((idx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-background/80 rounded-full shadow hover:bg-background">
+          <button onClick={() => setIdx((idx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1 bg-background/80 rounded-full shadow hover:bg-background cursor-pointer z-10">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button onClick={() => setIdx((idx + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-background/80 rounded-full shadow hover:bg-background">
+          <button onClick={() => setIdx((idx + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-background/80 rounded-full shadow hover:bg-background cursor-pointer z-10">
             <ChevronRight className="w-4 h-4" />
           </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            {images.map((_, i) => (
+              <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === idx ? 'bg-primary' : 'bg-background/60'}`} />
+            ))}
+          </div>
         </>
       )}
     </div>
