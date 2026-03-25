@@ -18,7 +18,7 @@ export default function TimePicker({ value, onChange, className }: TimePickerPro
   const [h, m] = (value || '12:00').split(':');
 
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutes = ['00', '15', '30', '45'];
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
 
   const handleHourSelect = (hour: string) => {
     onChange(`${hour}:${m}`);
