@@ -13,12 +13,13 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { dbPostToPost, dbClientToClient, DbPost, DbClient } from '@/hooks/useAppData';
 
-function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdjustment }: {
+function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdjustment, isInternal }: {
   post: Post;
   clientName: string;
   clientLogo: string;
   onApprove: () => void;
   onRequestAdjustment: (feedback: string) => void;
+  isInternal?: boolean;
 }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -32,7 +33,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
   const isLogoUrl = clientLogo.startsWith('http');
   const isVertical = post.type === 'story' || post.type === 'reels';
 
-  if (post.stage === 'approved' || post.stage === 'scheduled' || status === 'approved') {
+  if (post.stage === 'approved' || post.stage === 'scheduled' || status === 'approved' || (isInternal && post.stage === 'client_approval')) {
     return (
       <div className="w-full max-w-[375px] mx-auto mb-6 text-center animate-slide-in py-8">
         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
@@ -45,7 +46,7 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
     return (
       <div className="w-full max-w-[375px] mx-auto mb-6 text-center animate-slide-in py-8">
         <MessageSquare className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-        <p className="text-sm font-semibold text-gray-900">Ajuste solicitado</p>
+        <p className="text-sm font-semibold text-gray-900">Post enviado para alteração</p>
       </div>
     );
   }
@@ -191,10 +192,12 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
 
       {/* Individual Approve / Adjustment */}
       <div className="px-3 pb-3 space-y-2">
-        <Button onClick={handleApprove} className="w-full bg-green-500 hover:bg-green-600 text-white" size="sm">
-          <CheckCircle className="w-4 h-4 mr-2" /> Aprovar
-        </Button>
-        <div className="border-t border-gray-100 pt-2">
+        {!feedback.trim() && (
+          <Button onClick={handleApprove} className="w-full bg-green-500 hover:bg-green-600 text-white" size="sm">
+            <CheckCircle className="w-4 h-4 mr-2" /> Aprovar
+          </Button>
+        )}
+        <div className={!feedback.trim() ? "border-t border-gray-100 pt-2" : "pt-2"}>
           <Textarea
             placeholder="Descreva o ajuste necessário..."
             value={feedback}
@@ -253,14 +256,14 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
           const allInternalQuery = query(
             collection(db, 'posts'), 
             where('clientId', '==', clientId),
-            where('stage', 'in', ['internal_approval', 'adjustments', 'approved', 'scheduled'])
+            where('stage', 'in', ['internal_approval', 'adjustments', 'approved', 'scheduled', 'client_approval'])
           );
           const allInternalSnapshot = await getDocs(allInternalQuery);
           fetchedPosts = allInternalSnapshot.docs.map(d => dbPostToPost(d.id, d.data() as DbPost));
         }
 
         const filteredPosts = fetchedPosts.filter(p => 
-          (isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || 
+          (isInternal ? (p.stage === 'internal_approval' || p.stage === 'client_approval') : p.stage === 'client_approval') || 
           p.stage === 'approved' || 
           p.stage === 'scheduled' || 
           p.stage === 'adjustments'
@@ -291,7 +294,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
 
   // Use global data if available (logged-in admin), otherwise use local data
   const postsFromToken = globalPosts.filter(p => (isInternal ? p.internalApprovalLink === token : p.approvalLink === token) && 
-    ((isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval') || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
+    ((isInternal ? (p.stage === 'internal_approval' || p.stage === 'client_approval') : p.stage === 'client_approval') || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   
   const displayPosts = (postsFromToken.length > 0 ? postsFromToken : localPosts).sort((a, b) => {
     const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime || '00:00'}:00`).getTime();
@@ -462,6 +465,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
             clientLogo={client?.logo || '🏢'}
             onApprove={() => handleApprovePost(post.id)}
             onRequestAdjustment={(fb) => handleRequestAdjustment(post.id, fb)}
+            isInternal={isInternal}
           />
         ))}
       </div>
