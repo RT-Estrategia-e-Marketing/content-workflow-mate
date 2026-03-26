@@ -24,6 +24,12 @@ export function dateToDateStr(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
+
+export function isVideoUrl(url?: string): boolean {
+  if (!url) return false;
+  const cleanUrl = url.split(/[#?]/)[0];
+  return /\.(mp4|webm|ogg|mov)$/i.test(cleanUrl);
+}
 export async function downloadUrl(url: string, filename: string) {
   try {
     const response = await fetch(url);

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import FileUpload from '@/components/FileUpload';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
-import { formatDateBR, downloadUrl } from '@/lib/utils';
+import { formatDateBR, downloadUrl, isVideoUrl } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Link2, MessageSquare, Send, GripVertical, Upload, Smartphone, ChevronLeft, ChevronRight, Trash2, CalendarDays, Zap, Edit2, Image, Film, Images, Instagram, Facebook, X, Clock, AlertCircle, Ban, RefreshCw, CheckCircle2, Download } from 'lucide-react';
 import { useState, useRef, DragEvent, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -63,12 +63,22 @@ function PreviewCarousel({ images, postTitle }: { images: string[], postTitle: s
       onTouchEnd={handleTouchEnd}
     >
       {images.map((img, i) => (
-         <img 
-           key={i} 
-           src={img} 
-           alt={`Slide ${i + 1}`} 
-           className={`w-full shrink-0 object-contain ${i === idx ? 'block' : 'hidden'}`} 
-         />
+         isVideoUrl(img) ? (
+           <video
+             key={i}
+             src={img}
+             className={`w-full shrink-0 object-contain ${i === idx ? 'block' : 'hidden'}`}
+             controls={i === idx}
+             muted={i !== idx}
+           />
+         ) : (
+           <img 
+             key={i} 
+             src={img} 
+             alt={`Slide ${i + 1}`} 
+             className={`w-full shrink-0 object-contain ${i === idx ? 'block' : 'hidden'}`} 
+           />
+         )
       ))}
       
       <button 
@@ -490,7 +500,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                 </Select>
               </div>
 
-              {type === 'image' && <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem" preview={mainImage} />}
+              {type === 'image' && <FileUpload bucket="post-media" onUpload={setMainImage} label="Imagem/Vídeo" preview={mainImage} accept="image/*,video/*" />}
               
               {type === 'reels' && (
                 <div className="space-y-2">
@@ -501,11 +511,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
 
               {(type === 'carousel' || type === 'story') && (
                 <div className="space-y-2">
-                  <input ref={multiFileRef} type="file" accept="image/*" multiple onChange={handleMultiFileUpload} className="hidden" />
+                  <input ref={multiFileRef} type="file" accept="image/*,video/*" multiple onChange={handleMultiFileUpload} className="hidden" />
                   <div className="grid grid-cols-3 gap-2">
                     {carouselImages.map((img, i) => (
                       <div key={i} draggable onDragStart={(e) => handleCarouselDragStart(e, i)} onDragOver={e => e.preventDefault()} onDrop={e => handleCarouselDrop(e, i)} className="relative group rounded border overflow-hidden">
-                        <img src={img} className="w-full aspect-square object-cover" />
+                        {isVideoUrl(img) ? <video src={img} className="w-full aspect-square object-cover" muted /> : <img src={img} className="w-full aspect-square object-cover" />}
                         <button onClick={() => setCarouselImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-destructive text-white rounded-full p-0.5"><X className="w-2.5 h-2.5" /></button>
                       </div>
                     ))}
@@ -546,7 +556,11 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                     <PreviewCarousel images={post.images || []} postTitle={post.title} />
                   ) : (
                     <>
-                      <img src={post.imageUrl} className="w-full rounded-lg border object-contain" />
+                      {isVideoUrl(post.imageUrl) ? (
+                        <video src={post.imageUrl} controls className="w-full rounded-lg border object-contain" />
+                      ) : (
+                        <img src={post.imageUrl} className="w-full rounded-lg border object-contain" />
+                      )}
                       <button 
                         onClick={() => handleDownloadMedia(post.imageUrl!)}
                         className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary hover:text-primary-foreground shadow-sm z-10"

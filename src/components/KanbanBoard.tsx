@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
-import { formatDateBR, downloadUrl } from '@/lib/utils';
+import { formatDateBR, downloadUrl, isVideoUrl } from '@/lib/utils';
 import { MoreVertical, Copy, CalendarDays, ChevronLeft, ChevronRight, Zap, Share, AlertCircle, CheckCircle2, Download } from 'lucide-react';
 import { useState, DragEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -196,7 +196,11 @@ function PostCard({ post, client, onOpenPreview }: PostCardProps & { onOpenPrevi
 
         {allImages.length > 0 ? (
           <div className={`relative rounded-md overflow-hidden bg-muted mb-2 flex items-center justify-center ${isVertical ? 'aspect-[9/16]' : ''}`}>
-            <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+            {isVideoUrl(allImages[slideIdx] || allImages[0]) ? (
+              <video src={allImages[slideIdx] || allImages[0]} muted className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+            ) : (
+              <img src={allImages[slideIdx] || allImages[0]} alt={post.title} className={`w-full ${isVertical ? 'h-full object-cover' : 'object-contain'}`} />
+            )}
             
             <button 
               onClick={handleDownload}

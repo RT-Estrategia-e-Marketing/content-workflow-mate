@@ -4,7 +4,7 @@ import { CheckCircle, MessageSquare, Images, Film, Image, Instagram, Facebook, C
 import { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { formatDateBR } from '@/lib/utils';
+import { formatDateBR, isVideoUrl } from '@/lib/utils';
 import { Post, Client } from '@/lib/types';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -116,12 +116,21 @@ function InstagramMockup({ post, clientName, clientLogo, onApprove, onRequestAdj
           <>
             <div className="flex w-full h-full">
               {allImages.map((img, i) => (
-                <img 
-                  key={i} 
-                  src={img || ''} 
-                  alt="" 
-                  className={`w-full shrink-0 ${isVertical ? 'h-full' : ''} object-contain ${i === currentSlide ? 'block' : 'hidden'}`} 
-                />
+                isVideoUrl(img) ? (
+                  <video 
+                    key={i} 
+                    src={img || ''} 
+                    controls={i === currentSlide}
+                    className={`w-full shrink-0 ${isVertical ? 'h-full' : ''} object-contain ${i === currentSlide ? 'block' : 'hidden'}`} 
+                  />
+                ) : (
+                  <img 
+                    key={i} 
+                    src={img || ''} 
+                    alt="" 
+                    className={`w-full shrink-0 ${isVertical ? 'h-full' : ''} object-contain ${i === currentSlide ? 'block' : 'hidden'}`} 
+                  />
+                )
               ))}
             </div>
             {allImages.length > 1 && (
