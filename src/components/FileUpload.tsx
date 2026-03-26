@@ -22,9 +22,9 @@ export default function FileUpload({ bucket, onUpload, accept = 'image/*', label
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const maxSize = 150 * 1024 * 1024; // 150MB
+    const maxSize = 500 * 1024 * 1024; // 500MB
     if (file.size > maxSize) {
-      toast.error(`Arquivo muito grande (máx. 150MB)`);
+      toast.error(`Arquivo muito grande (máx. 500MB)`);
       return;
     }
 
