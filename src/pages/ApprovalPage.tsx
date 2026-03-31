@@ -230,6 +230,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const { user } = useAuth();
   const { profiles } = useProfiles();
   const [allApproved, setAllApproved] = useState(false);
+  const [sessionActedIds, setSessionActedIds] = useState<string[]>([]);
 
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [localClient, setLocalClient] = useState<Client | null>(null);
@@ -305,16 +306,24 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const postsFromToken = globalPosts.filter(p => (isInternal ? p.internalApprovalLink === token : p.approvalLink === token) && 
     ((isInternal ? (p.stage === 'internal_approval' || p.stage === 'client_approval') : p.stage === 'client_approval') || p.stage === 'approved' || p.stage === 'scheduled' || p.stage === 'adjustments'));
   
-  const displayPosts = (postsFromToken.length > 0 ? postsFromToken : localPosts).sort((a, b) => {
+  const allPostsForToken = (postsFromToken.length > 0 ? postsFromToken : localPosts).sort((a, b) => {
     const dateA = new Date(`${a.scheduledDate}T${a.scheduledTime || '00:00'}:00`).getTime();
     const dateB = new Date(`${b.scheduledDate}T${b.scheduledTime || '00:00'}:00`).getTime();
     return dateA - dateB;
   });
+
+  const displayPosts = allPostsForToken.filter(post => {
+    if (sessionActedIds.includes(post.id)) return true;
+    return isInternal 
+      ? post.stage === 'internal_approval'
+      : post.stage === 'client_approval';
+  });
+
   const client = postsFromToken.length > 0 
     ? globalClients.find(c => c.id === postsFromToken[0].clientId) 
     : localClient;
   
-  const isLoading = globalLoading && displayPosts.length === 0 && localLoading;
+  const isLoading = globalLoading && allPostsForToken.length === 0 && localLoading;
 
   if (isLoading) {
     return (
@@ -326,7 +335,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
     );
   }
 
-  if (displayPosts.length === 0) {
+  if (allPostsForToken.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -337,7 +346,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
     );
   }
 
-  if (allApproved || displayPosts.every(p => p.stage === 'approved' || p.stage === 'scheduled')) {
+  if (allApproved || allPostsForToken.every(p => p.stage === 'approved' || p.stage === 'scheduled')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center animate-slide-in">
@@ -356,6 +365,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   const pendingPosts = displayPosts.filter(p => isInternal ? p.stage === 'internal_approval' : p.stage === 'client_approval');
 
   const handleApprovePost = (postId: string) => {
+    setSessionActedIds(prev => [...prev, postId]);
     movePost(postId, isInternal ? 'client_approval' : 'approved');
     
     // Notification for approval
@@ -377,6 +387,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
   };
 
   const handleRequestAdjustment = (postId: string, feedback: string) => {
+    setSessionActedIds(prev => [...prev, postId]);
     const post = (postsFromToken.length > 0 ? globalPosts : localPosts).find(p => p.id === postId);
     if (!post) return;
     const newComment = {
@@ -409,6 +420,7 @@ export default function ApprovalPage({ isInternal = false }: { isInternal?: bool
 
   const handleApproveAll = () => {
     pendingPosts.forEach(p => {
+      setSessionActedIds(prev => [...prev, p.id]);
       movePost(p.id, isInternal ? 'client_approval' : 'approved');
       
       // Notification for approval
