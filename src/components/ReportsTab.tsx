@@ -447,29 +447,28 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                 </div>
               )}
 
-              {hasAds && (
-                <div>
-                  <p className="text-xs font-bold text-[#FF6B35] uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <Target className="w-3 h-3" /> Anúncios (ADS)
-                  </p>
-                  <div className="space-y-2 pl-1">
-                    {([
-                      ['ads_spend', 'Investimento'],
-                      ['ads_reach', 'Alcance'],
-                      ['ads_impressions', 'Impressões'],
-                      ['ads_clicks', 'Cliques'],
-                      ['ads_cpc', 'CPC'],
-                      ['ads_ctr', 'CTR'],
-                      ['ads_frequency', 'Frequência'],
-                    ] as [keyof VisibleMetrics, string][]).map(([key, label]) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <Checkbox id={key} checked={metrics[key]} onCheckedChange={() => toggleMetric(key)} />
-                        <Label htmlFor={key} className="text-sm cursor-pointer">{label}</Label>
-                      </div>
-                    ))}
-                  </div>
+              {/* Always show Ads toggle customizing options */}
+              <div>
+                <p className="text-xs font-bold text-[#FF6B35] uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Target className="w-3 h-3" /> Anúncios (ADS)
+                </p>
+                <div className="space-y-2 pl-1">
+                  {([
+                    ['ads_spend', 'Investimento'],
+                    ['ads_reach', 'Alcance'],
+                    ['ads_impressions', 'Impressões'],
+                    ['ads_clicks', 'Cliques'],
+                    ['ads_cpc', 'CPC'],
+                    ['ads_ctr', 'CTR'],
+                    ['ads_frequency', 'Frequência'],
+                  ] as [keyof VisibleMetrics, string][]).map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <Checkbox id={key} checked={metrics[key]} onCheckedChange={() => toggleMetric(key)} />
+                      <Label htmlFor={key} className="text-sm cursor-pointer">{label}</Label>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
             </PopoverContent>
           </Popover>
 
@@ -486,7 +485,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           {hasFB && <TabsTrigger value="facebook" className="gap-1.5"><Facebook className="w-3.5 h-3.5" />Facebook</TabsTrigger>}
           {hasIG && <TabsTrigger value="instagram" className="gap-1.5"><Instagram className="w-3.5 h-3.5" />Instagram</TabsTrigger>}
-          {hasAds && <TabsTrigger value="ads" className="gap-1.5"><Target className="w-3.5 h-3.5" />Anúncios</TabsTrigger>}
+          <TabsTrigger value="ads" className="gap-1.5"><Target className="w-3.5 h-3.5" />Ads</TabsTrigger>
         </TabsList>
 
         {/* ══════════════════ VISÃO GERAL ══════════════════ */}
@@ -855,10 +854,24 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
         )}
 
         {/* ══════════════════ ANÚNCIOS (ADS) ══════════════════ */}
-        {hasAds && (
-          <TabsContent value="ads" className="space-y-6 mt-6">
-            {loading ? <LoadingSkeleton /> : (
-              <>
+        <TabsContent value="ads" className="space-y-6 mt-6">
+          {!hasAds ? (
+            <div className="bg-card/50 border-2 border-dashed border-[#FF6B35]/30 rounded-xl p-10 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-[#FF6B35]/10 rounded-full flex items-center justify-center mb-4">
+                <Target className="w-8 h-8 text-[#FF6B35]" />
+              </div>
+              <h3 className="text-xl font-bold font-display text-foreground mb-2">Conecte sua conta de Anúncios</h3>
+              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6">
+                Para ver o histórico e a performance das suas campanhas de Ads (tráfego pago), preencha o ID Numérico da conta de anúncios deste cliente.
+              </p>
+              <div className="text-sm border border-border p-3 rounded-lg bg-background inline-block">
+                Configuração » Ícone do Meta Lupa (⬛) » ID Conta de Anúncios
+              </div>
+            </div>
+          ) : loading ? (
+            <LoadingSkeleton />
+          ) : (
+            <>
                 {/* ADS header */}
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-[#FF6B35]/10 border border-[#FF6B35]/20">
                   <div className="w-10 h-10 bg-[#FF6B35] rounded-xl flex items-center justify-center">
@@ -1080,8 +1093,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
               </>
             )}
           </TabsContent>
-        )}
-      </Tabs>
+        </Tabs>
 
       {/* Print styles */}
       <style dangerouslySetInnerHTML={{ __html: `
