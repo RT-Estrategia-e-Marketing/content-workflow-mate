@@ -20,6 +20,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   getPageInsights,
   getPageSummary,
@@ -315,9 +317,9 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
       pdf.save(`Relatorio_${client.name.replace(/\s+/g, '_')}_${monthStr}.pdf`);
       
       toast.success('Relatório exportado em PDF com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
-      toast.error('Ocorreu um erro ao exportar o PDF.');
+      toast.error(`Erro ao gerar PDF: ${error.message || 'Falha na renderização visual'}`);
     } finally {
       setIsExporting(false);
     }
