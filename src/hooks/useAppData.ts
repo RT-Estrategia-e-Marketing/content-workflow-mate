@@ -16,6 +16,7 @@ export interface DbClient {
   meta_page_name?: string;
   meta_ig_account_id?: string;
   meta_ig_account_name?: string;
+  meta_ads_account_id?: string;
 }
 
 export interface DbPost {
@@ -51,6 +52,7 @@ export function dbClientToClient(id: string, c: DbClient): Client {
     meta_page_name: c.meta_page_name,
     meta_ig_account_id: c.meta_ig_account_id,
     meta_ig_account_name: c.meta_ig_account_name,
+    meta_ads_account_id: c.meta_ads_account_id,
   };
 }
 
