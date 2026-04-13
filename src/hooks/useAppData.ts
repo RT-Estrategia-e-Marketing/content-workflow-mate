@@ -161,6 +161,7 @@ export function useAppData() {
     if (data.meta_page_name !== undefined) update.meta_page_name = data.meta_page_name;
     if (data.meta_ig_account_id !== undefined) update.meta_ig_account_id = data.meta_ig_account_id;
     if (data.meta_ig_account_name !== undefined) update.meta_ig_account_name = data.meta_ig_account_name;
+    if (data.meta_ads_account_id !== undefined) update.meta_ads_account_id = data.meta_ads_account_id;
 
     await updateDoc(doc(db, 'clients', clientId), update);
   }, []);
