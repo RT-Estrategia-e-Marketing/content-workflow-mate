@@ -32,8 +32,8 @@ function translateMetaError(error: any): string {
         return "Sua conexão com o Meta expirou. Por favor, vá nas configurações do cliente e clique em 'Reconectar com Meta' para continuar publicando.";
     }
 
-    if (message.includes('permissions')) {
-        return "Erro de permissão. Certifique-se de que você concedeu todas as autorizações solicitadas durante o login com o Facebook.";
+    if (message.includes('permissions') || message.includes('permission')) {
+        return "Erro de permissão: o token atual não possui as autorizações necessárias. Vá em Configurações do Cliente → Reconectar com Meta para gerar um novo token com todas as permissões.";
     }
 
     if (message.includes('whitelist') || message.includes('capability')) {
@@ -195,15 +195,14 @@ function buildDateParams(filter: DateRangeFilter): string {
 export async function getPageInsights(pageId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
 
+    // Only metrics valid for period=day. Lifetime-only metrics (page_fans, page_fan_removes,
+    // page_actions_post_reactions_total) must NOT be included here — they cause error #100.
     const metrics = [
         'page_impressions',
         'page_impressions_unique',
         'page_post_engagements',
-        'page_fans',
         'page_fan_adds',
-        'page_fan_removes',
         'page_views_total',
-        'page_actions_post_reactions_total',
     ].join(',');
 
     try {
@@ -214,9 +213,6 @@ export async function getPageInsights(pageId: string, accessToken: string, filte
 
         if (data.error) {
             console.error('Meta API Error (Page Insights):', data.error);
-            if (data.error.code === 10 || data.error.code === 200) {
-                console.warn('Falta de permissão para métricas específicas do Facebook.');
-            }
             throw new Error(data.error.message);
         }
         return data.data;
@@ -249,12 +245,27 @@ export async function getPageSummary(pageId: string, accessToken: string) {
  */
 export async function getFBRecentPosts(pageId: string, accessToken: string, limit = 10) {
     try {
-        // Requires: pages_read_engagement, pages_read_user_content
+        // Basic fields available with pages_read_engagement.
+        // likes.summary / reactions.summary require a fresh token with pages_read_user_content.
+        // If the client has reconnected Meta after the app was published, the full fields below work.
         const fields = 'id,message,story,created_time,full_picture,permalink_url,likes.summary(true),comments.summary(true),shares,reactions.summary(true)';
         const url = `https://graph.facebook.com/v19.0/${pageId}/posts?fields=${fields}&limit=${limit}&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+
+        if (data.error) {
+            // If permission error, fall back to basic fields
+            if (data.error.code === 200 || data.error.code === 10 ||
+                (data.error.message || '').toLowerCase().includes('permission')) {
+                const basicFields = 'id,message,story,created_time,full_picture,permalink_url';
+                const fallbackUrl = `https://graph.facebook.com/v19.0/${pageId}/posts?fields=${basicFields}&limit=${limit}&access_token=${accessToken}`;
+                const fbRes = await fetch(fallbackUrl);
+                const fbData = await fbRes.json();
+                if (fbData.error) throw new Error(fbData.error.message);
+                return fbData.data || [];
+            }
+            throw new Error(data.error.message);
+        }
         return data.data || [];
     } catch (err: any) {
         console.error('Erro ao buscar posts do Facebook:', err);
@@ -268,33 +279,41 @@ export async function getFBRecentPosts(pageId: string, accessToken: string, limi
  */
 export async function getInstagramInsights(igAccountId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
+    const dateParams = buildDateParams(dateFilter);
+    const base = `https://graph.facebook.com/v19.0/${igAccountId}/insights`;
 
-    // Métricas válidas para period=day no endpoint /insights do Instagram Business.
-    // Ref: erro (#100) da API — 'impressions' não é válido com period=day neste endpoint.
-    const metrics = [
-        'reach',
-        'profile_views',
-        'accounts_engaged',
-        'total_interactions',
-        'follower_count',
-        'likes',
-        'comments',
-        'saves',
-        'shares',
-        'follows_and_unfollows',
+    // The IG Insights API has two incompatible metric types:
+    // 1. period=day   → returns time-series (values[]) for: reach, follower_count
+    // 2. metric_type=total_value → returns a single aggregate for all other metrics
+    //    (profile_views, accounts_engaged, total_interactions, likes, comments, saves, shares, follows_and_unfollows)
+    const timeSeriesMetrics = 'reach,follower_count';
+    const totalValueMetrics = [
+        'profile_views', 'accounts_engaged', 'total_interactions',
+        'likes', 'comments', 'saves', 'shares', 'follows_and_unfollows',
     ].join(',');
 
     try {
-        const dateParams = buildDateParams(dateFilter);
-        const url = `https://graph.facebook.com/v19.0/${igAccountId}/insights?metric=${metrics}&period=day${dateParams}&access_token=${accessToken}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const [tsRes, tvRes] = await Promise.all([
+            fetch(`${base}?metric=${timeSeriesMetrics}&period=day${dateParams}&access_token=${accessToken}`).then(r => r.json()),
+            fetch(`${base}?metric=${totalValueMetrics}&metric_type=total_value&period=day${dateParams}&access_token=${accessToken}`).then(r => r.json()),
+        ]);
 
-        if (data.error) {
-            console.error('Meta API Error (IG Insights):', data.error);
-            throw new Error(data.error.message);
+        if (tsRes.error) {
+            console.error('Meta API Error (IG Insights time-series):', tsRes.error);
+            throw new Error(tsRes.error.message);
         }
-        return data.data;
+        if (tvRes.error) {
+            console.error('Meta API Error (IG Insights total_value):', tvRes.error);
+            throw new Error(tvRes.error.message);
+        }
+
+        // Normalize total_value metrics into values[] format so existing helpers (getMetricValue) work
+        const normalizedTv = (tvRes.data || []).map((m: any) => ({
+            ...m,
+            values: [{ value: m.total_value?.value ?? 0, end_time: '' }],
+        }));
+
+        return [...(tsRes.data || []), ...normalizedTv];
     } catch (err: any) {
         console.error('Erro ao buscar insights do Instagram:', err);
         throw new Error(translateMetaError(err));
