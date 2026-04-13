@@ -47,6 +47,7 @@ export default function ClientDetailPage() {
   const [metaAdsAccountId, setMetaAdsAccountId] = useState('');
 
   const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
+  const [metaAdAccounts, setMetaAdAccounts] = useState<{ id: string, name: string, account_id: string }[]>([]);
   const [loadingPages, setLoadingPages] = useState(false);
   const [metaAppId] = useState(import.meta.env.VITE_META_APP_ID || '2479723212497865');
   const [fbStatus, setFbStatus] = useState<'pending' | 'loaded' | 'error'>('pending');
@@ -149,6 +150,7 @@ export default function ClientDetailPage() {
     setMetaAccessToken('');
     setMetaAdsAccountId('');
     setMetaPages([]);
+    setMetaAdAccounts([]);
     setMetaOpen(false);
     toast.success('Cliente desconectado do Meta');
   };
@@ -168,6 +170,19 @@ export default function ClientDetailPage() {
         } else {
           toast.info('Nenhuma página do Facebook encontrada para este usuário.');
         }
+
+        // --- FETCH USER AD ACCOUNTS ---
+        try {
+          const adsRes = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id&limit=100&access_token=${response.accessToken}`);
+          const adsData = await adsRes.json();
+          if (adsData.data && adsData.data.length > 0) {
+            setMetaAdAccounts(adsData.data);
+            toast.success(`${adsData.data.length} contas de anúncio vinculadas encontradas.`);
+          }
+        } catch (adsErr) {
+          console.error("Erro ao buscar contas de anúncio:", adsErr);
+        }
+        
       } catch (err: any) {
         console.error('Erro ao trocar tokens da Meta via Firebase Functions:', err);
         toast.error(`Falha na conexão: ${err.message || 'Erro desconhecido'}. Verifique se a função foi implantada.`);
@@ -380,14 +395,29 @@ export default function ClientDetailPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-foreground">ID da Conta de Anúncios (Opcional)</label>
-                  <Input
-                    placeholder="Ex: 1234567890"
-                    value={metaAdsAccountId}
-                    onChange={e => setMetaAdsAccountId(e.target.value)}
-                  />
+                  <label className="text-xs font-medium text-foreground">Conta de Anúncios</label>
+                  {metaAdAccounts.length > 0 ? (
+                    <Select value={metaAdsAccountId} onValueChange={setMetaAdsAccountId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a conta de anúncios" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {metaAdAccounts.map(adAcc => (
+                          <SelectItem key={adAcc.id} value={adAcc.id}>
+                            {adAcc.name || adAcc.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      placeholder="Ex: 1234567890 (Inserir manualmente)"
+                      value={metaAdsAccountId}
+                      onChange={e => setMetaAdsAccountId(e.target.value)}
+                    />
+                  )}
                   <p className="text-[10px] text-muted-foreground mt-1 text-center">
-                    Insira o ID numérico da conta de anúncios para gerar relatórios de tráfego pago.
+                    Conta de Anúncios vinculada ao Meta para relatórios de tráfego pago.
                   </p>
                 </div>
               </div>
