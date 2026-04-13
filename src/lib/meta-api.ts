@@ -450,15 +450,24 @@ export async function getAdsInsights(adAccountId: string, accessToken: string, f
 }
 
 /**
- * Buscar Campanhas ativas da conta de Ads
+ * Buscar Campanhas de Ads (Ativas e Inativas) expandido com Insights de Performance
  */
-export async function getAdsCampaigns(adAccountId: string, accessToken: string) {
+export async function getAdsCampaigns(adAccountId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     try {
         const id = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
-        const fields = 'id,name,status,objective,spend_cap,budget_remaining,effective_status';
-        const url = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=${fields}&limit=20&access_token=${accessToken}`;
+        const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
+        const dateParams = buildDateParams(dateFilter);
+        
+        // Passando 'dateParams' (ex: date_preset=last_30d) dentro do nó insights para retornar 
+        // os resultados limitados ao período selecionado no painel.
+        // Trazendo métricas críticas para analisar "se foi bem ou não":
+        const insightsFields = 'spend,reach,impressions,clicks,cpc,ctr,cost_per_result,actions';
+        const fields = `id,name,status,objective,spend_cap,effective_status,insights.limit(1)${dateParams.replace('&', '%26')}{${insightsFields}}`;
+        
+        const url = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=${fields}&limit=50&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
+        
         if (data.error) throw new Error(data.error.message);
         return data.data || [];
     } catch (err: any) {

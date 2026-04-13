@@ -264,7 +264,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
       tasks.push(
         getAdsInsights(client.meta_ads_account_id!, client.meta_access_token!, dateFilter)
           .then(setAdsInsights).catch(e => handleError(e, 'Ads Insights')),
-        getAdsCampaigns(client.meta_ads_account_id!, client.meta_access_token!)
+        getAdsCampaigns(client.meta_ads_account_id!, client.meta_access_token!, dateFilter)
           .then(setAdsCampaigns).catch(e => handleError(e, 'Campanhas')),
       );
     }
@@ -986,28 +986,93 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                   />
                 )}
 
-                {/* Campaigns list */}
+                {/* Campaigns Detailed Analysis */}
                 {adsCampaigns.length > 0 && (
-                  <Card className="border-none shadow-sm bg-card/50">
-                    <CardHeader>
-                      <CardTitle className="text-base font-bold">Campanhas</CardTitle>
+                  <Card className="border-none shadow-sm bg-card/50 overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-border/50">
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <BarChart-2 className="w-4 h-4 text-[#FF6B35]" />
+                        Análise de Campanhas
+                      </CardTitle>
+                      <CardDescription>Desempenho detalhado por campanha (ativas e inativas) no período selecionado</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {adsCampaigns.map((c: any) => (
-                          <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors">
-                            <div>
-                              <p className="text-sm font-medium">{c.name}</p>
-                              <p className="text-xs text-muted-foreground">{c.objective}</p>
-                            </div>
-                            <Badge
-                              variant={c.effective_status === 'ACTIVE' ? 'default' : 'secondary'}
-                              className={c.effective_status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-600 border-0' : ''}
-                            >
-                              {c.effective_status === 'ACTIVE' ? 'Ativa' : c.effective_status?.toLowerCase() || 'inativa'}
-                            </Badge>
-                          </div>
-                        ))}
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border/50 bg-muted/20">
+                              <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Campanha</th>
+                              <th className="px-4 py-3 text-left font-semibold text-muted-foreground whitespace-nowrap">Status</th>
+                              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Gasto</th>
+                              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Cliques</th>
+                              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Custo/Res</th>
+                              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Performance</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/30">
+                            {adsCampaigns.map((c: any) => {
+                              const insights = c.insights?.data?.[0];
+                              const spent = parseFloat(insights?.spend || '0');
+                              const clicks = parseInt(insights?.clicks || '0', 10);
+                              const cpr = parseFloat(insights?.cost_per_result || '0');
+                              const cpc = parseFloat(insights?.cpc || '0');
+                              const isActive = c.effective_status === 'ACTIVE';
+                              
+                              // Simplified analysis based on generic metrics
+                              const roas = insights?.actions?.find((a: any) => a.action_type === 'offsite_conversion.fb_pixel_purchase')?.value;
+                              let performanceLabel = 'Bom';
+                              let performanceColor = 'text-emerald-500 bg-emerald-500/10';
+                              
+                              if (spent > 0 && clicks === 0) {
+                                performanceLabel = 'Ruim (Sem cliques)';
+                                performanceColor = 'text-destructive bg-destructive/10';
+                              } else if (cpc > 5) { // Arbitrary high CPC example
+                                performanceLabel = 'Alto Custo (CPC)';
+                                performanceColor = 'text-orange-500 bg-orange-500/10';
+                              } else if (spent === 0 && isActive) {
+                                performanceLabel = 'Sem Gasto';
+                                performanceColor = 'text-muted-foreground bg-muted';
+                              } else if (!isActive && spent > 0) {
+                                performanceLabel = 'Concluído';
+                                performanceColor = 'text-blue-500 bg-blue-500/10';
+                              }
+
+                              return (
+                                <tr key={c.id} className="hover:bg-muted/10 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <p className="font-medium max-w-[200px] md:max-w-[300px] truncate" title={c.name}>{c.name}</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase">{c.objective}</p>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge
+                                      variant={isActive ? 'default' : 'secondary'}
+                                      className={isActive ? 'bg-emerald-500/20 text-emerald-600 border-0 shadow-none' : 'shadow-none'}
+                                    >
+                                      {isActive ? 'Ativa' : c.effective_status?.toLowerCase()}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-right whitespace-nowrap font-medium">
+                                    {spent > 0 ? fmtCurrency(spent) : '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    {clicks > 0 ? fmt(clicks) : '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    {cpr > 0 ? fmtCurrency(cpr) : (cpc > 0 ? \`\${fmtCurrency(cpc)}/clique\` : '—')}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <span className={\`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide \${performanceColor}\`}>
+                                      {performanceLabel}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="p-3 text-xs bg-muted/20 text-muted-foreground text-center border-t border-border/50">
+                        A análise de performance é uma referência baseada no CPC/Ações. Campanhas Otimizadas mostrarão relatórios mais precisos.
                       </div>
                     </CardContent>
                   </Card>
