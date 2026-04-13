@@ -91,7 +91,7 @@ export default function ClientDetailPage() {
         handleFacebookLogin({ accessToken: r.authResponse.accessToken });
       }
     }, { 
-      scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,pages_read_user_content,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management,ads_read'
+      scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,pages_read_user_content,read_insights,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management,ads_read'
     });
   };
 

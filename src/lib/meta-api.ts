@@ -177,6 +177,38 @@ export async function publishToInstagram({ igAccountId, accessToken, caption, im
 // ─── INSIGHTS ────────────────────────────────────────────────────────────────
 
 /**
+ * Converte um preset de data (ex: 'last_30d') para timestamps Unix since/until.
+ * Necessário para chamadas metric_type=total_value que não suportam date_preset.
+ */
+function presetToSinceUntil(preset: string): { since: number; until: number } {
+    const now = new Date();
+    const until = Math.floor(now.getTime() / 1000);
+    switch (preset) {
+        case 'today': {
+            const start = new Date(now); start.setHours(0, 0, 0, 0);
+            return { since: Math.floor(start.getTime() / 1000), until };
+        }
+        case 'yesterday': {
+            const start = new Date(now); start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
+            const end = new Date(start); end.setHours(23, 59, 59, 0);
+            return { since: Math.floor(start.getTime() / 1000), until: Math.floor(end.getTime() / 1000) };
+        }
+        case 'last_7d': {
+            const start = new Date(now); start.setDate(start.getDate() - 7);
+            return { since: Math.floor(start.getTime() / 1000), until };
+        }
+        case 'this_month': {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            return { since: Math.floor(start.getTime() / 1000), until };
+        }
+        default: { // last_30d and specific months (already have since/until from caller)
+            const start = new Date(now); start.setDate(start.getDate() - 30);
+            return { since: Math.floor(start.getTime() / 1000), until };
+        }
+    }
+}
+
+/**
  * Resolve os parâmetros de data para a URL da API Meta.
  * Suporta preset (last_30d, this_month, etc.) ou since/until (timestamps Unix).
  */
@@ -186,6 +218,18 @@ function buildDateParams(filter: DateRangeFilter): string {
     }
     const preset = filter.preset || 'last_30d';
     return `&date_preset=${preset}`;
+}
+
+/**
+ * Retorna always since/until como string de parâmetros.
+ * Usado para endpoints que não suportam date_preset (ex: metric_type=total_value).
+ */
+function buildSinceUntilParams(filter: DateRangeFilter): string {
+    if (filter.since && filter.until) {
+        return `&since=${filter.since}&until=${filter.until}`;
+    }
+    const { since, until } = presetToSinceUntil(filter.preset || 'last_30d');
+    return `&since=${since}&until=${until}`;
 }
 
 /**
@@ -292,23 +336,25 @@ export async function getFBRecentPosts(pageId: string, accessToken: string, limi
  */
 export async function getInstagramInsights(igAccountId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
-    const dateParams = buildDateParams(dateFilter);
     const base = `https://graph.facebook.com/v19.0/${igAccountId}/insights`;
 
     // The IG Insights API has two incompatible metric types:
-    // 1. period=day   → returns time-series (values[]) for: reach, follower_count
-    // 2. metric_type=total_value → returns a single aggregate for all other metrics
-    //    (profile_views, accounts_engaged, total_interactions, likes, comments, saves, shares, follows_and_unfollows)
+    // 1. period=day + date_preset  → time-series (values[])  for: reach, follower_count
+    // 2. metric_type=total_value   → aggregate total          for all other metrics
+    //    IMPORTANT: metric_type=total_value does NOT accept date_preset — must use since/until.
     const timeSeriesMetrics = 'reach,follower_count';
     const totalValueMetrics = [
         'profile_views', 'accounts_engaged', 'total_interactions',
         'likes', 'comments', 'saves', 'shares', 'follows_and_unfollows',
     ].join(',');
 
+    const dateParams = buildDateParams(dateFilter);          // for time-series (supports date_preset)
+    const sinceUntilParams = buildSinceUntilParams(dateFilter); // for total_value (requires since/until)
+
     try {
         const [tsRes, tvRes] = await Promise.all([
             fetch(`${base}?metric=${timeSeriesMetrics}&period=day${dateParams}&access_token=${accessToken}`).then(r => r.json()),
-            fetch(`${base}?metric=${totalValueMetrics}&metric_type=total_value&period=day${dateParams}&access_token=${accessToken}`).then(r => r.json()),
+            fetch(`${base}?metric=${totalValueMetrics}&metric_type=total_value&period=day${sinceUntilParams}&access_token=${accessToken}`).then(r => r.json()),
         ]);
 
         if (tsRes.error) {
