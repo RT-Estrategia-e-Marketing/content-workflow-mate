@@ -284,8 +284,8 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
   const fbFans = fbSummary?.fan_count || 0;
 
   const igReach = getMetricValue(igInsights, 'reach');
-  // NOTE: 'impressions' is not available via period=day on IG Insights endpoint.
-  // Use granular metrics instead.
+  // NOTE: 'impressions' is not available via period=day on IG Insights endpoint — kept as 0.
+  const igImpressions = 0;
   const igInteractions = getMetricValue(igInsights, 'total_interactions');
   const igProfileViews = getMetricValue(igInsights, 'profile_views');
   const igFollowers = igDetails?.followers_count || getMetricValue(igInsights, 'follower_count');
