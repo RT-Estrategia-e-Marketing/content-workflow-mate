@@ -991,7 +991,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                   <Card className="border-none shadow-sm bg-card/50 overflow-hidden">
                     <CardHeader className="pb-3 border-b border-border/50">
                       <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <BarChart-2 className="w-4 h-4 text-[#FF6B35]" />
+                        <BarChart3 className="w-4 h-4 text-[#FF6B35]" />
                         Análise de Campanhas
                       </CardTitle>
                       <CardDescription>Desempenho detalhado por campanha (ativas e inativas) no período selecionado</CardDescription>
@@ -1058,10 +1058,10 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                                     {clicks > 0 ? fmt(clicks) : '—'}
                                   </td>
                                   <td className="px-4 py-3 text-right">
-                                    {cpr > 0 ? fmtCurrency(cpr) : (cpc > 0 ? \`\${fmtCurrency(cpc)}/clique\` : '—')}
+                                    {cpr > 0 ? fmtCurrency(cpr) : (cpc > 0 ? `${fmtCurrency(cpc)}/clique` : '—')}
                                   </td>
                                   <td className="px-4 py-3 text-right">
-                                    <span className={\`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide \${performanceColor}\`}>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${performanceColor}`}>
                                       {performanceLabel}
                                     </span>
                                   </td>
