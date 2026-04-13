@@ -462,9 +462,9 @@ export async function getAdsCampaigns(adAccountId: string, accessToken: string, 
         // os resultados limitados ao período selecionado no painel.
         // Trazendo métricas críticas para analisar "se foi bem ou não":
         const insightsFields = 'spend,reach,impressions,clicks,cpc,ctr,cost_per_result,actions';
-        const fields = `id,name,status,objective,spend_cap,effective_status,insights.limit(1)${dateParams.replace('&', '%26')}{${insightsFields}}`;
+        const fields = `id,name,status,objective,spend_cap,effective_status,insights.limit(1){${insightsFields}}`;
         
-        const url = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=${fields}&limit=50&access_token=${accessToken}`;
+        const url = `https://graph.facebook.com/v19.0/${id}/campaigns?fields=${fields}&limit=50${dateParams}&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
         

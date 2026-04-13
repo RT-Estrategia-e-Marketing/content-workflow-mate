@@ -49,6 +49,7 @@ export interface Client {
   meta_ig_account_id?: string;
   meta_ig_account_name?: string;
   meta_ads_account_id?: string;
+  meta_user_token?: string;
   report_settings?: {
     visible_sections?: string[]; // fb, ig, ads
     custom_metrics?: string[];

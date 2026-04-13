@@ -17,6 +17,7 @@ export interface DbClient {
   meta_ig_account_id?: string;
   meta_ig_account_name?: string;
   meta_ads_account_id?: string;
+  meta_user_token?: string;
 }
 
 export interface DbPost {
@@ -53,6 +54,7 @@ export function dbClientToClient(id: string, c: DbClient): Client {
     meta_ig_account_id: c.meta_ig_account_id,
     meta_ig_account_name: c.meta_ig_account_name,
     meta_ads_account_id: c.meta_ads_account_id,
+    meta_user_token: c.meta_user_token,
   };
 }
 
@@ -162,6 +164,7 @@ export function useAppData() {
     if (data.meta_ig_account_id !== undefined) update.meta_ig_account_id = data.meta_ig_account_id;
     if (data.meta_ig_account_name !== undefined) update.meta_ig_account_name = data.meta_ig_account_name;
     if (data.meta_ads_account_id !== undefined) update.meta_ads_account_id = data.meta_ads_account_id;
+    if (data.meta_user_token !== undefined) update.meta_user_token = data.meta_user_token;
 
     await updateDoc(doc(db, 'clients', clientId), update);
   }, []);

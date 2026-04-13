@@ -45,6 +45,7 @@ export default function ClientDetailPage() {
   const [metaIgAccountName, setMetaIgAccountName] = useState('');
   const [metaAccessToken, setMetaAccessToken] = useState('');
   const [metaAdsAccountId, setMetaAdsAccountId] = useState('');
+  const [metaUserToken, setMetaUserToken] = useState('');
 
   const [metaPages, setMetaPages] = useState<{ id: string, name: string, access_token: string }[]>([]);
   const [metaAdAccounts, setMetaAdAccounts] = useState<{ id: string, name: string, account_id: string }[]>([]);
@@ -117,6 +118,7 @@ export default function ClientDetailPage() {
     setMetaIgAccountName(client.meta_ig_account_name || '');
     setMetaAccessToken(client.meta_access_token || '');
     setMetaAdsAccountId(client.meta_ads_account_id || '');
+    setMetaUserToken(client.meta_user_token || '');
     setMetaPages([]);
     setMetaOpen(true);
   };
@@ -128,7 +130,8 @@ export default function ClientDetailPage() {
       meta_ig_account_id: metaIgAccountId.trim(),
       meta_ig_account_name: metaIgAccountName.trim(),
       meta_access_token: metaAccessToken.trim(),
-      meta_ads_account_id: metaAdsAccountId.trim()
+      meta_ads_account_id: metaAdsAccountId.trim(),
+      meta_user_token: metaUserToken.trim()
     });
     setMetaOpen(false);
     toast.success('Integração com Meta atualizada');
@@ -141,7 +144,8 @@ export default function ClientDetailPage() {
       meta_ig_account_id: '',
       meta_ig_account_name: '',
       meta_access_token: '',
-      meta_ads_account_id: ''
+      meta_ads_account_id: '',
+      meta_user_token: ''
     });
     setMetaPageId('');
     setMetaPageName('');
@@ -149,6 +153,7 @@ export default function ClientDetailPage() {
     setMetaIgAccountName('');
     setMetaAccessToken('');
     setMetaAdsAccountId('');
+    setMetaUserToken('');
     setMetaPages([]);
     setMetaAdAccounts([]);
     setMetaOpen(false);
@@ -163,6 +168,10 @@ export default function ClientDetailPage() {
         const exchangeMetaToken = httpsCallable(functions, 'exchangeMetaToken');
         const result = await exchangeMetaToken({ shortLivedToken: response.accessToken });
         const exchangeData = result.data as any;
+
+        if (exchangeData.userToken) {
+          setMetaUserToken(exchangeData.userToken);
+        }
 
         if (exchangeData.data && exchangeData.data.length > 0) {
           setMetaPages(exchangeData.data);

@@ -208,7 +208,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
   const hasMeta = !!client.meta_access_token;
   const hasFB = !!(client.meta_page_id && client.meta_access_token);
   const hasIG = !!(client.meta_ig_account_id && client.meta_access_token);
-  const hasAds = !!(client.meta_ads_account_id && client.meta_access_token);
+  const hasAds = !!(client.meta_ads_account_id && (client.meta_user_token || client.meta_access_token));
 
   useEffect(() => {
     if (hasMeta) fetchAllInsights();
@@ -260,11 +260,12 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
       );
     }
 
-    if (hasAds) {
+    if (hasAds && (client.meta_user_token || client.meta_access_token)) {
+      const adsToken = client.meta_user_token || client.meta_access_token;
       tasks.push(
-        getAdsInsights(client.meta_ads_account_id!, client.meta_access_token!, dateFilter)
+        getAdsInsights(client.meta_ads_account_id!, adsToken!, dateFilter)
           .then(setAdsInsights).catch(e => handleError(e, 'Ads Insights')),
-        getAdsCampaigns(client.meta_ads_account_id!, client.meta_access_token!, dateFilter)
+        getAdsCampaigns(client.meta_ads_account_id!, adsToken!, dateFilter)
           .then(setAdsCampaigns).catch(e => handleError(e, 'Campanhas')),
       );
     }

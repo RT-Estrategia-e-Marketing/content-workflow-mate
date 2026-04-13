@@ -294,7 +294,7 @@ exports.exchangeMetaToken = functions.region('us-central1').https.onCall(async (
     const r2 = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${d1.access_token}&limit=100`);
     const d2 = await r2.json();
 
-    return { data: d2.data || [], message: 'OK' };
+    return { data: d2.data || [], userToken: d1.access_token, message: 'OK' };
   } catch (e) {
     throw new functions.https.HttpsError('internal', e.message);
   }
