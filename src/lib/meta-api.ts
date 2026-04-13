@@ -194,32 +194,45 @@ function buildDateParams(filter: DateRangeFilter): string {
  */
 export async function getPageInsights(pageId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
+    const dateParams = buildDateParams(dateFilter);
 
-    // Only metrics valid for period=day. Lifetime-only metrics (page_fans, page_fan_removes,
-    // page_actions_post_reactions_total) must NOT be included here — they cause error #100.
-    const metrics = [
+    // Fetch each metric individually so a single invalid/deprecated metric
+    // does not kill the entire batch (error #100 rejects the whole request).
+    const metricList = [
         'page_impressions',
         'page_impressions_unique',
         'page_post_engagements',
         'page_fan_adds',
         'page_views_total',
-    ].join(',');
+    ];
 
-    try {
-        const dateParams = buildDateParams(dateFilter);
-        const url = `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metrics}&period=day${dateParams}&access_token=${accessToken}`;
-        const res = await fetch(url);
-        const data = await res.json();
+    const results = await Promise.allSettled(
+        metricList.map(metric =>
+            fetch(
+                `https://graph.facebook.com/v19.0/${pageId}/insights?metric=${metric}&period=day${dateParams}&access_token=${accessToken}`
+            )
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) throw new Error(`[${metric}] ${data.error.message}`);
+                    return data.data || [];
+                })
+        )
+    );
 
-        if (data.error) {
-            console.error('Meta API Error (Page Insights):', data.error);
-            throw new Error(data.error.message);
+    const combined: any[] = [];
+    results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+            combined.push(...result.value);
+        } else {
+            console.warn(`FB Insights: métrica '${metricList[i]}' ignorada —`, (result as PromiseRejectedResult).reason?.message);
         }
-        return data.data;
-    } catch (err: any) {
-        console.error('Erro ao buscar insights do Facebook:', err);
-        throw new Error(translateMetaError(err));
+    });
+
+    if (combined.length === 0) {
+        throw new Error('Nenhuma métrica do Facebook Insights pôde ser carregada.');
     }
+
+    return combined;
 }
 
 /**
