@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/lib/types';
 import { MetricCard } from './MetricCard';
@@ -205,6 +205,8 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
     });
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
   const hasMeta = !!client.meta_access_token;
   const hasFB = !!(client.meta_page_id && client.meta_access_token);
   const hasIG = !!(client.meta_ig_account_id && client.meta_access_token);
@@ -272,6 +274,53 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
 
     await Promise.allSettled(tasks);
     setLoading(false);
+  };
+
+  // ── Handlers ────────────────────────────────────────────────────────────
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    // Aguarda o React atualizar a interface do DOM para mostrar cabecalho e esconder tabs
+    await new Promise(r => setTimeout(r, 100));
+
+    const element = document.getElementById('report-pdf-content');
+    if (!element) {
+      setIsExporting(false);
+      return;
+    }
+    
+    try {
+      toast.info('Gerando PDF do Relatório, aguarde...', { duration: 3000 });
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      
+      const monthStr = dateFilter === 'this_month' ? 'Este_Mes' : dateFilter === 'last_month' ? 'Mes_Passado' : 'Ultimos_30d';
+      pdf.save(`Relatorio_${client.name.replace(/\s+/g, '_')}_${monthStr}.pdf`);
+      
+      toast.success('Relatório exportado em PDF com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Ocorreu um erro ao exportar o PDF.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // ── Derived values ──────────────────────────────────────────────────────────
@@ -365,10 +414,10 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
   }
 
   return (
-    <div className={`space-y-6 ${loading ? 'animate-pulse pointer-events-none' : 'animate-in fade-in duration-300'}`}>
+    <div id="report-pdf-content" className={`space-y-6 ${loading && !isExporting ? 'animate-pulse pointer-events-none' : 'animate-in fade-in duration-300'} ${isExporting ? 'p-8 bg-background' : ''}`}>
 
       {/* Print header */}
-      <div className="hidden print:flex items-center justify-between mb-8 border-b pb-6">
+      <div className={`${isExporting ? 'flex' : 'hidden print:flex'} items-center justify-between mb-8 border-b pb-6`}>
         <div className="flex items-center gap-4">
           {client.logo && client.logo.startsWith('http') ? (
             <img src={client.logo} alt="" className="w-12 h-12 object-contain" />
@@ -386,7 +435,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center justify-between print:hidden">
+      <div className={`${isExporting ? 'hidden' : 'flex print:hidden'} items-center justify-between`}>
         <Button variant="outline" size="sm" onClick={fetchAllInsights} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Atualizando...' : 'Atualizar Dados'}
@@ -473,7 +522,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
             </PopoverContent>
           </Popover>
 
-          <Button size="sm" onClick={() => window.print()}>
+          <Button size="sm" onClick={handleExportPDF}>
             <Download className="w-4 h-4 mr-2" />
             Exportar PDF
           </Button>
@@ -482,7 +531,7 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
 
       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="bg-muted/50 p-1 print:hidden w-full md:w-auto">
+        <TabsList className={`${isExporting ? 'hidden' : 'flex print:hidden bg-muted/50 p-1 w-full md:w-auto'}`}>
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           {hasFB && <TabsTrigger value="facebook" className="gap-1.5"><Facebook className="w-3.5 h-3.5" />Facebook</TabsTrigger>}
           {hasIG && <TabsTrigger value="instagram" className="gap-1.5"><Instagram className="w-3.5 h-3.5" />Instagram</TabsTrigger>}
