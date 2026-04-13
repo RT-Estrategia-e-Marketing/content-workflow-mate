@@ -249,6 +249,7 @@ export async function getPageSummary(pageId: string, accessToken: string) {
  */
 export async function getFBRecentPosts(pageId: string, accessToken: string, limit = 10) {
     try {
+        // Requires: pages_read_engagement, pages_read_user_content
         const fields = 'id,message,story,created_time,full_picture,permalink_url,likes.summary(true),comments.summary(true),shares,reactions.summary(true)';
         const url = `https://graph.facebook.com/v19.0/${pageId}/posts?fields=${fields}&limit=${limit}&access_token=${accessToken}`;
         const res = await fetch(url);
@@ -268,13 +269,19 @@ export async function getFBRecentPosts(pageId: string, accessToken: string, limi
 export async function getInstagramInsights(igAccountId: string, accessToken: string, filter: DateRangeFilter | string = 'last_30d') {
     const dateFilter: DateRangeFilter = typeof filter === 'string' ? { preset: filter } : filter;
 
+    // Métricas válidas para period=day no endpoint /insights do Instagram Business.
+    // Ref: erro (#100) da API — 'impressions' não é válido com period=day neste endpoint.
     const metrics = [
         'reach',
-        'impressions',
         'profile_views',
         'accounts_engaged',
         'total_interactions',
         'follower_count',
+        'likes',
+        'comments',
+        'saves',
+        'shares',
+        'follows_and_unfollows',
     ].join(',');
 
     try {
@@ -299,7 +306,7 @@ export async function getInstagramInsights(igAccountId: string, accessToken: str
  */
 export async function getIGAccountDetails(igAccountId: string, accessToken: string) {
     try {
-        const fields = 'name,biography,followers_count,follows_count,media_count,profile_picture_url,website';
+        const fields = 'name,username,biography,followers_count,follows_count,media_count,profile_picture_url,website';
         const url = `https://graph.facebook.com/v19.0/${igAccountId}?fields=${fields}&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -316,7 +323,9 @@ export async function getIGAccountDetails(igAccountId: string, accessToken: stri
  */
 export async function getIGRecentMedia(igAccountId: string, accessToken: string, limit = 10) {
     try {
-        const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,engagement)';
+        // Métricas válidas para media insights: reach, impressions, saved, video_views,
+        // total_interactions, plays. 'engagement' e 'engagement_rate' foram deprecados.
+        const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,total_interactions,plays)';
         const url = `https://graph.facebook.com/v19.0/${igAccountId}/media?fields=${fields}&limit=${limit}&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();

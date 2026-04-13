@@ -284,11 +284,17 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
   const fbFans = fbSummary?.fan_count || 0;
 
   const igReach = getMetricValue(igInsights, 'reach');
-  const igImpressions = getMetricValue(igInsights, 'impressions');
+  // NOTE: 'impressions' is not available via period=day on IG Insights endpoint.
+  // Use granular metrics instead.
   const igInteractions = getMetricValue(igInsights, 'total_interactions');
   const igProfileViews = getMetricValue(igInsights, 'profile_views');
   const igFollowers = igDetails?.followers_count || getMetricValue(igInsights, 'follower_count');
   const igAccountsEngaged = getMetricValue(igInsights, 'accounts_engaged');
+  const igLikes = getMetricValue(igInsights, 'likes');
+  const igComments = getMetricValue(igInsights, 'comments');
+  const igSaves = getMetricValue(igInsights, 'saves');
+  const igShares = getMetricValue(igInsights, 'shares');
+  const igFollowsGained = getMetricValue(igInsights, 'follows_and_unfollows');
 
   const adsSpend = getAdsMetric(adsInsights, 'spend');
   const adsReach = getAdsMetric(adsInsights, 'reach');
@@ -428,7 +434,6 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                   <div className="space-y-2 pl-1">
                     {([
                       ['ig_reach', 'Alcance'],
-                      ['ig_impressions', 'Impressões'],
                       ['ig_interactions', 'Interações'],
                       ['ig_profile_views', 'Visitas ao Perfil'],
                       ['ig_followers', 'Seguidores'],
@@ -746,20 +751,23 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                     <img src={igDetails.profile_picture_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                   )}
                   <div>
-                    <p className="font-semibold">@{igDetails?.name || client.name}</p>
+                    <p className="font-semibold">@{igDetails?.username || igDetails?.name || client.name}</p>
                     <p className="text-sm text-muted-foreground">{fmt(igFollowers)} seguidores · {igDetails?.media_count ?? '—'} publicações</p>
                   </div>
                   <Badge variant="secondary" className="ml-auto bg-[#E1306C]/10 text-[#E1306C] border-0">Orgânico</Badge>
                 </div>
 
-                {/* IG metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {metrics.ig_reach && <MetricCard title="Alcance" value={fmt(igReach)} icon={Users} description="Contas únicas alcançadas" />}
-                  {metrics.ig_impressions && <MetricCard title="Impressões" value={fmt(igImpressions)} icon={Eye} description="Total de visualizações" />}
-                  {metrics.ig_interactions && <MetricCard title="Interações" value={fmt(igInteractions)} icon={Heart} description="Curtidas + comentários + saves" />}
+                  {metrics.ig_interactions && <MetricCard title="Interações" value={fmt(igInteractions)} icon={Heart} description="Total de engajamentos" />}
                   {metrics.ig_profile_views && <MetricCard title="Visitas ao Perfil" value={fmt(igProfileViews)} icon={Eye} description="Acessos ao perfil" />}
                   {metrics.ig_followers && <MetricCard title="Seguidores" value={fmt(igFollowers)} icon={Users} description="Total atual" />}
+                  <MetricCard title="Curtidas" value={fmt(igLikes)} icon={Heart} description="No período" />
+                  <MetricCard title="Comentários" value={fmt(igComments)} icon={MessageCircle} description="No período" />
+                  <MetricCard title="Saves" value={fmt(igSaves)} icon={Zap} description="Salvamentos" />
+                  <MetricCard title="Compartilhamentos" value={fmt(igShares)} icon={Share2} description="No período" />
                   <MetricCard title="Contas Engajadas" value={fmt(igAccountsEngaged)} icon={Zap} description="Que interagiram com o conteúdo" />
+                  {igFollowsGained !== 0 && <MetricCard title="Novos Seguidores" value={fmt(igFollowsGained)} icon={Users} description="Ganhos no período" />}
                 </div>
 
                 {/* IG reach chart */}
