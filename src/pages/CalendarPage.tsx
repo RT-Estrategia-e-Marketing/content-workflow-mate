@@ -1,9 +1,9 @@
 import { useApp } from '@/contexts/AppContext';
 import { useMemo, useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, CalendarX } from 'lucide-react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import NewPostModal from '@/components/NewPostModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +22,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [filterClient, setFilterClient] = useState<string>('all');
+  const [filterStage, setFilterStage] = useState<string>('all');
 
   const [newPostOpen, setNewPostOpen] = useState(false);
   const [newPostDate, setNewPostDate] = useState<string>('');
@@ -31,15 +32,31 @@ export default function CalendarPage() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startDayOfWeek = getDay(monthStart);
 
-  const postsWithDates = useMemo(() => {
+  const filteredPosts = useMemo(() => {
     return posts
       .filter(p => filterClient === 'all' || p.clientId === filterClient)
+      .filter(p => filterStage === 'all' || p.stage === filterStage);
+  }, [posts, filterClient, filterStage]);
+
+  const postsWithDates = useMemo(() => {
+    return filteredPosts
+      .filter(p => p.scheduledDate && isValid(parseISO(p.scheduledDate)))
       .map(p => ({
         ...p,
-        date: parseISO(p.scheduledDate),
+        date: parseISO(p.scheduledDate as string),
         client: clients.find(c => c.id === p.clientId),
       }));
-  }, [posts, clients, filterClient]);
+  }, [filteredPosts, clients]);
+
+  // Posts without dates
+  const postsWithoutDates = useMemo(() => {
+    return filteredPosts
+      .filter(p => !p.scheduledDate || !isValid(parseISO(p.scheduledDate as string)))
+      .map(p => ({
+        ...p,
+        client: clients.find(c => c.id === p.clientId),
+      }));
+  }, [filteredPosts, clients]);
 
   const selectedPost = selectedPostId ? posts.find(p => p.id === selectedPostId) : null;
 
@@ -59,22 +76,33 @@ export default function CalendarPage() {
 
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="h-8 w-full max-w-[200px] text-xs">
-              <SelectValue placeholder="Filtrar por cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os clientes</SelectItem>
-              {clients.map(c => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <Select value={filterClient} onValueChange={setFilterClient}>
+          <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectValue placeholder="Filtrar por cliente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os clientes</SelectItem>
+            {clients.map(c => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterStage} onValueChange={setFilterStage}>
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            {KANBAN_STAGES.map(s => (
+              <SelectItem key={s.key} value={s.key}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex items-center justify-between mb-4">
@@ -196,6 +224,43 @@ export default function CalendarPage() {
                     <span className="text-xs font-medium text-foreground truncate">{p.title}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>{p.client?.name}</span>
+                    <span>·</span>
+                    <span>{stageLabel}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Posts without dates */}
+      {postsWithoutDates.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarX className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Sem data agendada</h3>
+            <span className="text-[10px] font-semibold bg-foreground/10 text-foreground/60 rounded-full px-2 py-0.5">{postsWithoutDates.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {postsWithoutDates.map(p => {
+              const stageLabel = KANBAN_STAGES.find(s => s.key === p.stage)?.label || p.stage;
+              const stageColor: Record<string, string> = {
+                content: 'bg-blue-400', internal_approval: 'bg-yellow-400', adjustments: 'bg-orange-400',
+                client_approval: 'bg-purple-400', approved: 'bg-green-400', scheduled: 'bg-sky-400',
+              };
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPostId(p.id)}
+                  className="text-left p-3 rounded-lg bg-card border border-border hover:bg-secondary hover:border-primary/30 transition-all active:scale-[0.98] shadow-sm"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stageColor[p.stage] || 'bg-muted-foreground'}`} />
+                    <span className="text-xs font-medium text-foreground truncate">{p.title}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                     <span>{p.client?.name}</span>
                     <span>·</span>
                     <span>{stageLabel}</span>

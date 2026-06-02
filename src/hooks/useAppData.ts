@@ -34,7 +34,7 @@ export interface DbPost {
   idea_text: string | null;
   reference_link: string | null;
   assigned_to: string | null;
-  scheduled_date: string;
+  scheduled_date: string | null;
   scheduled_time: string | null;
   scheduled_unix: number | null;
   approval_link: string | null;
@@ -73,7 +73,7 @@ export function dbPostToPost(id: string, p: DbPost): Post {
     ideaText: p.idea_text || undefined,
     referenceLink: p.reference_link || undefined,
     assignedTo: Array.isArray(p.assigned_to) ? p.assigned_to : (p.assigned_to ? [p.assigned_to] : []), // Ensure assignedTo is an array
-    scheduledDate: p.scheduled_date,
+    scheduledDate: p.scheduled_date || undefined,
     scheduledTime: p.scheduled_time || undefined,
     scheduledUnix: p.scheduled_unix || undefined,
     approvalLink: p.approval_link || undefined,
@@ -202,7 +202,7 @@ export function useAppData() {
         idea_text: post.ideaText || null,
         reference_link: post.referenceLink || null,
         assigned_to: post.assignedTo || [], // Ensure assignedTo is an array
-        scheduled_date: post.scheduledDate,
+        scheduled_date: post.scheduledDate || null,
         scheduled_time: post.scheduledTime || null,
         scheduled_unix: post.scheduledUnix || null, // Added
         approval_link: null,

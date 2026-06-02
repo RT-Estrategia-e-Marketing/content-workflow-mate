@@ -130,7 +130,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [caption, setCaption] = useState(post.caption);
   const [type, setType] = useState<PostType>(post.type);
   const [platform, setPlatform] = useState<Platform>(post.platform);
-  const [date, setDate] = useState(post.scheduledDate);
+  const [date, setDate] = useState<string>(post.scheduledDate || '');
   const [scheduledTime, setScheduledTime] = useState(post.scheduledTime || '12:00');
   const [mainImage, setMainImage] = useState(post.imageUrl);
   const [carouselImages, setCarouselImages] = useState<string[]>(post.images || []);
@@ -142,6 +142,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
   const [commentText, setCommentText] = useState('');
   const [delegateTo, setDelegateTo] = useState('');
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [assignedTo, setAssignedTo] = useState<string[]>(post.assignedTo || []);
   const multiFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -150,14 +151,38 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setCaption(post.caption);
     setType(post.type);
     setPlatform(post.platform);
-    setDate(post.scheduledDate);
+    setDate(post.scheduledDate || '');
     setScheduledTime(post.scheduledTime || '12:00');
     setMainImage(post.imageUrl);
     setCarouselImages(post.images || []);
     setVideoUrl(post.videoUrl || '');
     setIdeaText(post.ideaText || '');
     setReferenceLink(post.referenceLink || '');
+    setAssignedTo(post.assignedTo || []);
   }, [post, editing]);
+
+  const handleAssignedToChange = async (newAssigned: string[]) => {
+    setAssignedTo(newAssigned);
+    await updatePost(post.id, { assignedTo: newAssigned });
+    // Notify newly added members
+    if (user) {
+      const added = newAssigned.filter(uid => !(post.assignedTo || []).includes(uid));
+      const clientName = clients.find(c => c.id === post.clientId)?.name || 'Cliente';
+      const authorName = profiles.find(p => p.user_id === user.uid)?.full_name || 'Um usuário';
+      added.forEach(uid => {
+        if (uid !== user.uid) {
+          createNotification({
+            user_id: uid,
+            post_id: post.id,
+            client_id: post.clientId,
+            type: 'delegation',
+            message: `O usuário ${authorName} atribuiu você ao post: "${post.title}" de ${clientName}`,
+          });
+        }
+      });
+    }
+    toast.success('Responsáveis atualizados!');
+  };
 
   const assignedList = post.assignedTo || [];
   const assignedProfiles = profiles.filter(m => assignedList.includes(m.user_id));
@@ -208,7 +233,7 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
     setReferenceLink(post.referenceLink || '');
     setType(post.type);
     setPlatform(post.platform);
-    setDate(post.scheduledDate);
+    setDate(post.scheduledDate || '');
     setMainImage(post.imageUrl);
     setVideoUrl(post.videoUrl || '');
     setCarouselImages(post.images || []);
@@ -625,6 +650,17 @@ export default function PostPreviewDialog({ post, open, onOpenChange }: PostPrev
                     <button onClick={handleCopyLink} className="text-primary hover:underline italic">Link Cliente</button>
                   )}
                 </div>
+              </div>
+
+              {/* Responsáveis — always visible */}
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground font-medium mb-1.5">Responsáveis</p>
+                <MultiSelect
+                  options={profiles.map(m => ({ value: m.user_id, label: m.full_name }))}
+                  selected={assignedTo}
+                  onChange={handleAssignedToChange}
+                  placeholder="Selecionar responsáveis"
+                />
               </div>
 
               {post.comments.length > 0 && (

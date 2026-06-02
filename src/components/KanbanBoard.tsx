@@ -341,7 +341,12 @@ export default function KanbanBoard({ clientId }: KanbanBoardProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawPosts = getClientPosts(clientId);
   const client = clients.find(c => c.id === clientId);
-  const posts = [...rawPosts].sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+  const posts = [...rawPosts].sort((a, b) => {
+    if (!a.scheduledDate && !b.scheduledDate) return 0;
+    if (!a.scheduledDate) return 1;
+    if (!b.scheduledDate) return -1;
+    return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
+  });
   
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);

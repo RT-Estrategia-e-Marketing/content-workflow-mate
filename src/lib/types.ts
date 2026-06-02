@@ -25,7 +25,7 @@ export interface Post {
   ideaText?: string;
   referenceLink?: string;
   assignedTo?: string[];
-  scheduledDate: string;
+  scheduledDate?: string;
   scheduledTime?: string;
   scheduledUnix?: number;
   videoThumbnailUrl?: string;

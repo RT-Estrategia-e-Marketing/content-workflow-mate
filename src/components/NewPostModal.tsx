@@ -118,7 +118,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             type,
             platform,
             stage: 'content',
-            scheduledDate: date || new Date().toISOString().split('T')[0],
+            scheduledDate: date || undefined,
             scheduledTime,
             scheduledUnix: (date && scheduledTime) ? Math.floor(new Date(`${date}T${scheduledTime}:00`).getTime() / 1000) : undefined,
             videoThumbnailUrl: type === 'reels' ? reelsCover : undefined,
@@ -231,7 +231,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                     )}
                     <div className="flex gap-3">
                         <div className="flex-1">
-                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Data de agendamento</p>
+                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Data de agendamento <span className="text-muted-foreground/50">(opcional)</span></p>
                             <DatePicker value={date} onChange={setDate} />
                         </div>
                         <div className="flex-1">
