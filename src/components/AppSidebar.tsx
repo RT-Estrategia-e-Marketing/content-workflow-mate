@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, BarChart3, ChevronDown, Plus, Building2, ChevronsUpDown } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, BarChart3, Plus, Building2, ChevronsUpDown, Columns3, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -18,10 +18,11 @@ import { useUserRole } from '@/hooks/useUserRole';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/kanban', icon: Columns3, label: 'Kanban' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
   { to: '/trash', icon: Trash2, label: 'Lixeira' },
-  { to: '/settings', icon: Settings, label: 'Configurações' },
+  { to: '/settings', icon: SlidersHorizontal, label: 'Workspace' },
 ];
 
 interface AppSidebarProps {
@@ -309,6 +310,12 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                     </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => { setMenuOpen(false); navigate('/general-settings'); onClose?.(); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" /> Configurações Gerais
+                </button>
                 <button
                   onClick={openProfile}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-secondary transition-colors"

@@ -9,8 +9,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
+import KanbanPage from "@/pages/KanbanPage";
 import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
+import GeneralSettingsPage from "@/pages/GeneralSettingsPage";
 import ApprovalPage from "@/pages/ApprovalPage";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
@@ -42,9 +44,11 @@ const App = () => (
             <Routes>
               <Route element={<AuthGuard><AppLayout /></AuthGuard>}>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/kanban" element={<KanbanPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/general-settings" element={<GeneralSettingsPage />} />
                 <Route path="/trash" element={<TrashPage />} />
               </Route>
               <Route path="/internal-approve/:token" element={<AuthGuard><ApprovalPage isInternal /></AuthGuard>} />

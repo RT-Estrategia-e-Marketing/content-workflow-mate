@@ -3,13 +3,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
-import { FileText, CheckCircle, Clock, Bell, Check, Trash2, Building2, Plus, ImageIcon } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Bell, Check, Trash2, Building2, ImageIcon } from 'lucide-react';
 import { formatDateBR } from '@/lib/utils';
 import { useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { Button } from '@/components/ui/button';
-import KanbanBoard from '@/components/KanbanBoard';
 
 export default function DashboardPage() {
   const { clients, posts, activeWorkspaceId } = useApp();
@@ -108,10 +107,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Kanban Board */}
-      <div className="mb-6">
-        <KanbanBoard clientId={activeWorkspaceId} />
-      </div>
+
 
       {/* Bottom Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
