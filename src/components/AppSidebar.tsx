@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Kanban, Settings, Bell, LogOut, Camera, ChevronUp, Check, Trash2, BarChart3, ChevronDown, Plus, Building2, ChevronsUpDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -14,10 +14,10 @@ import { auth, db } from '@/lib/firebase';
 import { updatePassword } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/clients', icon: Users, label: 'Clientes' },
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
   { to: '/trash', icon: Trash2, label: 'Lixeira' },
@@ -36,11 +36,18 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
   const { user, signOut } = useAuth();
   const { profiles, refetch } = useProfiles();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteAllNotifications } = useNotifications();
-  const { posts } = useApp();
+  const { posts, clients, activeWorkspaceId, setActiveWorkspaceId, addClient } = useApp();
+  const { isAdmin } = useUserRole();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false);
+  const [newWorkspaceOpen, setNewWorkspaceOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspaceLogo, setNewWorkspaceLogo] = useState('');
+  const [addingWorkspace, setAddingWorkspace] = useState(false);
 
   const myProfile = profiles.find(p => p.user_id === user?.uid);
+  const activeClient = clients.find(c => c.id === activeWorkspaceId);
 
   const [editName, setEditName] = useState('');
   const [editJobTitle, setEditJobTitle] = useState('');
@@ -84,15 +91,45 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
     markAsRead(n.id);
     const post = posts.find(p => p.id === n.post_id);
     if (post) {
-      navigate(`/clients/${post.clientId}?postId=${post.id}`);
+      // Auto-switch to the post's workspace and navigate to dashboard
+      setActiveWorkspaceId(post.clientId);
+      navigate('/');
     }
     onClose?.();
+    setWorkspaceSwitcherOpen(false);
+  };
+
+  const handleSelectWorkspace = (id: string) => {
+    setActiveWorkspaceId(id);
+    setWorkspaceSwitcherOpen(false);
+    onClose?.();
+  };
+
+  const handleAddWorkspace = async () => {
+    if (!newWorkspaceName.trim()) return;
+    setAddingWorkspace(true);
+    const result = await addClient({
+      name: newWorkspaceName.trim(),
+      logo: newWorkspaceLogo || '',
+      color: `hsl(${Math.random() * 360}, 60%, 50%)`,
+    });
+    if (result) {
+      setActiveWorkspaceId(result.id);
+      toast.success(`Workspace "${result.name}" criado!`);
+    }
+    setNewWorkspaceName('');
+    setNewWorkspaceLogo('');
+    setNewWorkspaceOpen(false);
+    setWorkspaceSwitcherOpen(false);
+    setAddingWorkspace(false);
   };
 
   const initials = (myProfile?.full_name || user?.email || '?')
     .split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
   const recentNotifications = notifications.slice(0, 10);
+
+  const activeIsUrl = activeClient?.logo && activeClient.logo.startsWith('http');
 
   return (
     <>
@@ -144,7 +181,76 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
           </div>
         )}
 
-        <nav className="flex-1 px-3 mt-2 space-y-1">
+        {/* Workspace Switcher */}
+        <div className="px-3 mb-2">
+          <Popover open={workspaceSwitcherOpen} onOpenChange={setWorkspaceSwitcherOpen}>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sidebar-accent/60 hover:bg-sidebar-accent border border-sidebar-border/40 transition-all group">
+                {/* Workspace Logo */}
+                <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/20">
+                  {activeIsUrl ? (
+                    <img src={activeClient!.logo} alt={activeClient!.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-xs font-bold text-primary">
+                      {activeClient ? activeClient.name.charAt(0) : '?'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-xs font-semibold text-sidebar-foreground truncate leading-tight">
+                    {activeClient?.name || 'Selecionar workspace'}
+                  </p>
+                  <p className="text-[9px] text-sidebar-foreground/40 leading-tight">Workspace ativo</p>
+                </div>
+                <ChevronsUpDown className="w-3.5 h-3.5 text-sidebar-foreground/40 flex-shrink-0 group-hover:text-sidebar-foreground/70 transition-colors" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-2" align="start" side="bottom">
+              <div className="mb-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Workspaces</p>
+                <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                  {clients.map(c => {
+                    const isUrl = c.logo && c.logo.startsWith('http');
+                    const isActive = c.id === activeWorkspaceId;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => handleSelectWorkspace(c.id)}
+                        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left ${isActive ? 'bg-primary/10 text-primary' : 'hover:bg-secondary text-foreground'}`}
+                      >
+                        <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+                          {isUrl ? (
+                            <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
+                          ) : (
+                            <span className="text-[10px] font-bold text-primary">{c.name.charAt(0)}</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium truncate flex-1">{c.name}</span>
+                        {isActive && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                  {clients.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">Nenhum workspace</p>
+                  )}
+                </div>
+              </div>
+              {isAdmin && (
+                <div className="border-t border-border pt-1.5">
+                  <button
+                    onClick={() => { setNewWorkspaceOpen(true); setWorkspaceSwitcherOpen(false); }}
+                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Novo Workspace
+                  </button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <nav className="flex-1 px-3 mt-1 space-y-1">
           {NAV_ITEMS.map(item => {
             const isActive = location.pathname === item.to ||
               (item.to !== '/' && location.pathname.startsWith(item.to));
@@ -260,6 +366,34 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
             </div>
             <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Workspace Dialog */}
+      <Dialog open={newWorkspaceOpen} onOpenChange={setNewWorkspaceOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" /> Novo Workspace
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <Input
+              placeholder="Nome do workspace (ex: Café Artisan)"
+              value={newWorkspaceName}
+              onChange={e => setNewWorkspaceName(e.target.value)}
+              maxLength={100}
+            />
+            <FileUpload
+              bucket="client-logos"
+              onUpload={setNewWorkspaceLogo}
+              label="Logo do workspace"
+              preview={newWorkspaceLogo}
+            />
+            <Button onClick={handleAddWorkspace} className="w-full" disabled={!newWorkspaceName.trim() || addingWorkspace}>
+              {addingWorkspace ? 'Criando...' : 'Criar Workspace'}
             </Button>
           </div>
         </DialogContent>

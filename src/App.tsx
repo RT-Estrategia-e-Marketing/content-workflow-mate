@@ -9,8 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
-import ClientsPage from "@/pages/ClientsPage";
-import ClientDetailPage from "@/pages/ClientDetailPage";
 import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ApprovalPage from "@/pages/ApprovalPage";
@@ -44,8 +42,6 @@ const App = () => (
             <Routes>
               <Route element={<AuthGuard><AppLayout /></AuthGuard>}>
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/clients" element={<ClientsPage />} />
-                <Route path="/clients/:clientId" element={<ClientDetailPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

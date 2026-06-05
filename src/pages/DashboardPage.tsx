@@ -3,15 +3,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, CheckCircle, Clock, Bell, Check, Trash2 } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Bell, Check, Trash2, Building2, Plus, ImageIcon } from 'lucide-react';
 import { formatDateBR } from '@/lib/utils';
 import { useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import { Button } from '@/components/ui/button';
+import KanbanBoard from '@/components/KanbanBoard';
 
 export default function DashboardPage() {
-  const { clients, posts } = useApp();
+  const { clients, posts, activeWorkspaceId } = useApp();
   const { user } = useAuth();
   const { profiles } = useProfiles();
   const { notifications, markAsRead, markAllAsRead, deleteAllNotifications, unreadCount } = useNotifications();
@@ -20,17 +21,25 @@ export default function DashboardPage() {
   const [taskTab, setTaskTab] = useState<'pending' | 'overdue' | 'done'>('pending');
 
   const myProfile = profiles.find(p => p.user_id === user?.uid);
+  const activeClient = clients.find(c => c.id === activeWorkspaceId);
 
-  const myPosts = posts.filter(p => p.assignedTo && p.assignedTo.includes(user?.uid || ''));
+  // Filter posts for the active workspace
+  const workspacePosts = posts.filter(p => p.clientId === activeWorkspaceId);
+
+  const myPosts = workspacePosts.filter(p => p.assignedTo && p.assignedTo.includes(user?.uid || ''));
   const pendingPosts = myPosts.filter(p => !['approved', 'scheduled', 'published'].includes(p.stage));
   const donePosts = myPosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage));
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());
 
+  // Recent posts (last 5 updated) for the workspace
+  const recentPosts = [...workspacePosts]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
+
   const stats = [
-    { label: 'Clientes', value: clients.length, icon: Users, color: 'text-primary' },
-    { label: 'Posts Totais', value: posts.length, icon: FileText, color: 'text-accent' },
-    { label: 'Aprovados', value: posts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: CheckCircle, color: 'text-success' },
-    { label: 'Pendentes', value: posts.filter(p => !['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: Clock, color: 'text-warning' },
+    { label: 'Posts Totais', value: workspacePosts.length, icon: FileText, color: 'text-accent' },
+    { label: 'Aprovados', value: workspacePosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: CheckCircle, color: 'text-success' },
+    { label: 'Pendentes', value: workspacePosts.filter(p => !['approved', 'scheduled', 'published'].includes(p.stage)).length, icon: Clock, color: 'text-warning' },
   ];
 
   const taskList = taskTab === 'pending' ? pendingPosts.filter(p => !overduePosts.includes(p)) : taskTab === 'overdue' ? overduePosts : donePosts;
@@ -42,26 +51,55 @@ export default function DashboardPage() {
     markAsRead(n.id);
     const post = posts.find(p => p.id === n.post_id);
     if (post) {
-      navigate(`/clients/${post.clientId}?postId=${post.id}`);
+      navigate('/');
     }
   };
 
+  // Empty state — no workspace
+  if (!activeWorkspaceId || !activeClient) {
+    return (
+      <div className="animate-slide-in flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <Building2 className="w-10 h-10 text-primary" />
+        </div>
+        <h1 className="text-2xl font-display font-bold text-foreground mb-2">Nenhum workspace selecionado</h1>
+        <p className="text-muted-foreground mb-6 max-w-sm">
+          Crie ou selecione um workspace na barra lateral para começar a gerenciar posts.
+        </p>
+      </div>
+    );
+  }
+
+  const activeIsUrl = activeClient.logo && activeClient.logo.startsWith('http');
+
   return (
     <div className="animate-slide-in">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6 md:mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">
-            Olá, {myProfile?.full_name?.split(' ')[0] || 'Usuário'} 👋
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground">Veja o que está acontecendo hoje</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+            {activeIsUrl ? (
+              <img src={activeClient.logo} alt={activeClient.name} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-lg font-bold text-primary">{activeClient.name.charAt(0)}</span>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground leading-tight">
+              {activeClient.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Olá, {myProfile?.full_name?.split(' ')[0] || 'Usuário'} 👋
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         {stats.map(stat => (
-          <div key={stat.label} className="bg-card rounded-xl p-6 border border-border shadow-sm">
-            <div className="flex items-center justify-between mb-2 md:mb-3">
+          <div key={stat.label} className="bg-card rounded-xl p-5 border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-2">
               <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${stat.color}`} />
             </div>
             <p className="text-xl md:text-2xl font-display font-bold text-card-foreground">{stat.value}</p>
@@ -70,9 +108,15 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Kanban Board */}
+      <div className="mb-6">
+        <KanbanBoard clientId={activeWorkspaceId} />
+      </div>
+
+      {/* Bottom Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* My Tasks Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 flex flex-col">
           <div className="flex items-center gap-3 mb-4">
             {myProfile?.avatar_url ? (
               <img src={myProfile.avatar_url} alt="" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover" />
@@ -103,13 +147,12 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="space-y-2 max-h-[250px] overflow-y-auto">
+          <div className="space-y-2 max-h-[220px] overflow-y-auto">
             {taskList.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">Nenhuma tarefa</p>
             )}
             {taskList.map(p => {
               const stage = KANBAN_STAGES.find(s => s.key === p.stage);
-              const client = clients.find(c => c.id === p.clientId);
               return (
                 <button
                   key={p.id}
@@ -119,7 +162,7 @@ export default function DashboardPage() {
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${taskTab === 'overdue' ? 'bg-destructive' : 'bg-muted-foreground'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{p.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{client?.name} · {formatDateBR(p.scheduledDate)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDateBR(p.scheduledDate)}</p>
                   </div>
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted border border-border whitespace-nowrap hidden sm:inline">{stage?.label}</span>
                 </button>
@@ -128,30 +171,40 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Projects Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
-          <h2 className="font-display font-bold text-sm md:text-base text-card-foreground mb-4">Projetos</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
-            {clients.map(client => {
-              const clientPosts = posts.filter(p => p.clientId === client.id);
-              const approvedCount = clientPosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage)).length;
-              const isUrl = client.logo && client.logo.startsWith('http');
+        {/* Recent Posts Widget */}
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 flex flex-col">
+          <h2 className="font-display font-bold text-sm md:text-base text-card-foreground mb-4">Posts Recentes</h2>
+          <div className="space-y-2 flex-1">
+            {recentPosts.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhum post neste workspace</p>
+            )}
+            {recentPosts.map(p => {
+              const stage = KANBAN_STAGES.find(s => s.key === p.stage);
+              const STAGE_COLORS: Record<string, string> = {
+                content: 'bg-blue-400', design: 'bg-indigo-400', internal_approval: 'bg-yellow-400',
+                adjustments: 'bg-orange-400', client_approval: 'bg-purple-400',
+                approved: 'bg-green-400', scheduled: 'bg-sky-400', published: 'bg-emerald-400',
+              };
               return (
                 <button
-                  key={client.id}
-                  onClick={() => navigate(`/clients/${client.id}`)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left active:scale-[0.98]"
+                  key={p.id}
+                  onClick={() => setSelectedPostId(p.id)}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-secondary transition-colors text-left active:scale-[0.98]"
                 >
-                  {isUrl ? (
-                    <img src={client.logo} alt={client.name} className="w-9 h-9 rounded-lg object-contain" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary font-bold">
-                      {client.name.charAt(0)}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{client.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{approvedCount}/{clientPosts.length} aprovados</p>
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-card-foreground truncate">{p.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDateBR(p.createdAt)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[p.stage] || 'bg-muted-foreground'}`} />
+                    <span className="text-[9px] text-muted-foreground hidden sm:inline">{stage?.label}</span>
                   </div>
                 </button>
               );
@@ -159,33 +212,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* People Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-bold text-sm md:text-base text-card-foreground">Pessoas</h2>
-            <span className="text-[10px] md:text-xs text-muted-foreground">Colaboradores</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
-            {activeProfiles.map(p => (
-              <div key={p.id} className="flex items-center gap-3 p-2">
-                {p.avatar_url ? (
-                  <img src={p.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                    {p.full_name.substring(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs md:text-sm font-medium text-card-foreground truncate">{p.full_name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{p.job_title || p.priority}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Notifications Widget */}
-        <div className="bg-card rounded-xl border border-border shadow-sm p-6 h-full flex flex-col">
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6 flex flex-col">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h2 className="font-display font-bold text-sm md:text-base text-card-foreground flex items-center gap-2">
               <Bell className="w-4 h-4" /> Notificações
@@ -208,7 +236,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <div className="space-y-2 max-h-[250px] overflow-y-auto">
+          <div className="space-y-2 max-h-[220px] overflow-y-auto">
             {notifications.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
             )}

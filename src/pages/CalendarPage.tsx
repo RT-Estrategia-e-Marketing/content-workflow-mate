@@ -3,13 +3,14 @@ import { useMemo, useState } from 'react';
 import { KANBAN_STAGES } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Filter, CalendarX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, CalendarX, Building2 } from 'lucide-react';
 import PostPreviewDialog from '@/components/PostPreviewDialog';
 import NewPostModal from '@/components/NewPostModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STAGE_COLORS: Record<string, string> = {
   content: 'bg-blue-400',
+  design: 'bg-indigo-400',
   internal_approval: 'bg-yellow-400',
   adjustments: 'bg-orange-400',
   client_approval: 'bg-purple-400',
@@ -18,10 +19,9 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 export default function CalendarPage() {
-  const { posts, clients } = useApp();
+  const { posts, clients, activeWorkspaceId } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [filterClient, setFilterClient] = useState<string>('all');
   const [filterStage, setFilterStage] = useState<string>('all');
 
   const [newPostOpen, setNewPostOpen] = useState(false);
@@ -32,11 +32,14 @@ export default function CalendarPage() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startDayOfWeek = getDay(monthStart);
 
+  const activeClient = clients.find(c => c.id === activeWorkspaceId);
+
+  // Filter posts by active workspace + stage
   const filteredPosts = useMemo(() => {
     return posts
-      .filter(p => filterClient === 'all' || p.clientId === filterClient)
+      .filter(p => p.clientId === activeWorkspaceId)
       .filter(p => filterStage === 'all' || p.stage === filterStage);
-  }, [posts, filterClient, filterStage]);
+  }, [posts, activeWorkspaceId, filterStage]);
 
   const postsWithDates = useMemo(() => {
     return filteredPosts
@@ -69,27 +72,31 @@ export default function CalendarPage() {
     ? postsWithDates.filter(p => isSameDay(p.date, selectedDay))
     : [];
 
+  // Empty state — no workspace
+  if (!activeWorkspaceId || !activeClient) {
+    return (
+      <div className="animate-slide-in flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <Building2 className="w-10 h-10 text-primary" />
+        </div>
+        <h1 className="text-2xl font-display font-bold text-foreground mb-2">Nenhum workspace selecionado</h1>
+        <p className="text-muted-foreground max-w-sm">
+          Selecione um workspace na barra lateral para visualizar o calendário.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-slide-in">
       <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">Calendário</h1>
-      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">Visualize as publicações agendadas</p>
+      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">
+        Publicações agendadas · <span className="text-foreground font-medium">{activeClient.name}</span>
+      </p>
 
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        <Select value={filterClient} onValueChange={setFilterClient}>
-          <SelectTrigger className="h-8 w-[160px] text-xs">
-            <SelectValue placeholder="Filtrar por cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os clientes</SelectItem>
-            {clients.map(c => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={filterStage} onValueChange={setFilterStage}>
           <SelectTrigger className="h-8 w-[180px] text-xs">
             <SelectValue placeholder="Filtrar por status" />
@@ -150,7 +157,6 @@ export default function CalendarPage() {
                 key={day.toISOString()}
                 onClick={() => {
                   if (dayPosts.length > 0) {
-                    // On mobile, show day details; on desktop, open new post modal
                     if (window.innerWidth < 768) {
                       setSelectedDay(isSelected ? null : day);
                     } else {
@@ -191,7 +197,7 @@ export default function CalendarPage() {
                       className="w-full text-left text-[9px] px-1.5 py-0.5 rounded bg-muted border border-border truncate font-medium hover:opacity-80 transition-opacity cursor-pointer flex items-center gap-1"
                     >
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STAGE_COLORS[p.stage]}`} />
-                      <span className="truncate">{p.client?.name} - {p.title}</span>
+                      <span className="truncate">{p.title}</span>
                     </button>
                   ))}
                   {dayPosts.length > 3 && (
@@ -224,8 +230,6 @@ export default function CalendarPage() {
                     <span className="text-xs font-medium text-foreground truncate">{p.title}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>{p.client?.name}</span>
-                    <span>·</span>
                     <span>{stageLabel}</span>
                   </div>
                 </button>
@@ -247,8 +251,9 @@ export default function CalendarPage() {
             {postsWithoutDates.map(p => {
               const stageLabel = KANBAN_STAGES.find(s => s.key === p.stage)?.label || p.stage;
               const stageColor: Record<string, string> = {
-                content: 'bg-blue-400', internal_approval: 'bg-yellow-400', adjustments: 'bg-orange-400',
-                client_approval: 'bg-purple-400', approved: 'bg-green-400', scheduled: 'bg-sky-400',
+                content: 'bg-blue-400', design: 'bg-indigo-400', internal_approval: 'bg-yellow-400',
+                adjustments: 'bg-orange-400', client_approval: 'bg-purple-400',
+                approved: 'bg-green-400', scheduled: 'bg-sky-400',
               };
               return (
                 <button
@@ -261,8 +266,6 @@ export default function CalendarPage() {
                     <span className="text-xs font-medium text-foreground truncate">{p.title}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <span>{p.client?.name}</span>
-                    <span>·</span>
                     <span>{stageLabel}</span>
                   </div>
                 </button>
@@ -280,6 +283,7 @@ export default function CalendarPage() {
         <NewPostModal
           open={newPostOpen}
           initialDate={newPostDate}
+          clientId={activeWorkspaceId}
           onOpenChange={setNewPostOpen}
         />
       )}
