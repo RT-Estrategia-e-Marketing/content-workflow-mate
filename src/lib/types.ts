@@ -35,6 +35,7 @@ export interface Post {
   publishedAt?: string;
   comments: PostComment[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Client {

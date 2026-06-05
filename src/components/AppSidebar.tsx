@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { to: '/reports', icon: BarChart3, label: 'Relatórios' },
   { to: '/calendar', icon: CalendarDays, label: 'Calendário' },
   { to: '/trash', icon: Trash2, label: 'Lixeira' },
-  { to: '/settings', icon: SlidersHorizontal, label: 'Workspace' },
+  { to: '/settings', icon: SlidersHorizontal, label: 'Configuração' },
 ];
 
 interface AppSidebarProps {
@@ -104,6 +104,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
     setActiveWorkspaceId(id);
     setWorkspaceSwitcherOpen(false);
     onClose?.();
+    navigate('/');
   };
 
   const handleAddWorkspace = async () => {
@@ -154,7 +155,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="start" side="bottom">
+              <PopoverContent className="w-80 p-0 bg-[hsl(224,71%,4%)] border-white/10 text-white" align="start" side="bottom">
                 {renderNotificationContent()}
               </PopoverContent>
             </Popover>
@@ -175,7 +176,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                   )}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="start" side="bottom">
+              <PopoverContent className="w-80 p-0 bg-[hsl(224,71%,4%)] border-white/10 text-white" align="start" side="bottom">
                 {renderNotificationContent()}
               </PopoverContent>
             </Popover>
@@ -206,9 +207,9 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                 <ChevronsUpDown className="w-3.5 h-3.5 text-sidebar-foreground/40 flex-shrink-0 group-hover:text-sidebar-foreground/70 transition-colors" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-60 p-2" align="start" side="bottom">
+            <PopoverContent className="w-60 p-2 bg-[hsl(224,71%,4%)] border-white/10 text-white" align="start" side="bottom">
               <div className="mb-1.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Workspaces</p>
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-2 py-1">Workspaces</p>
                 <div className="space-y-0.5 max-h-48 overflow-y-auto">
                   {clients.map(c => {
                     const isUrl = c.logo && c.logo.startsWith('http');
@@ -217,9 +218,9 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                       <button
                         key={c.id}
                         onClick={() => handleSelectWorkspace(c.id)}
-                        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left ${isActive ? 'bg-primary/10 text-primary' : 'hover:bg-secondary text-foreground'}`}
+                        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors text-left ${isActive ? 'bg-primary/20 text-primary' : 'hover:bg-white/10 text-white'}`}
                       >
-                        <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+                        <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center bg-white/10">
                           {isUrl ? (
                             <img src={c.logo} alt={c.name} className="w-full h-full object-contain" />
                           ) : (
@@ -232,15 +233,15 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                     );
                   })}
                   {clients.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-3">Nenhum workspace</p>
+                    <p className="text-xs text-white/40 text-center py-3">Nenhum workspace</p>
                   )}
                 </div>
               </div>
               {isAdmin && (
-                <div className="border-t border-border pt-1.5">
+                <div className="border-t border-white/10 pt-1.5">
                   <button
                     onClick={() => { setNewWorkspaceOpen(true); setWorkspaceSwitcherOpen(false); }}
-                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Novo Workspace
@@ -294,8 +295,8 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-slide-in">
-                <div className="p-3 border-b border-border">
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[hsl(224,71%,4%)] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-slide-in">
+                <div className="p-3 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     {myProfile?.avatar_url ? (
                       <img src={myProfile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -305,27 +306,27 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-popover-foreground truncate">{myProfile?.full_name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                      <p className="text-sm font-semibold text-white truncate">{myProfile?.full_name}</p>
+                      <p className="text-[10px] text-white/40 truncate">{user?.email}</p>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => { setMenuOpen(false); navigate('/general-settings'); onClose?.(); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
                 >
-                  <Settings className="w-4 h-4 text-muted-foreground" /> Configurações Gerais
+                  <Settings className="w-4 h-4 text-white/40" /> Configurações Gerais
                 </button>
                 <button
                   onClick={openProfile}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
                 >
-                  <Camera className="w-4 h-4 text-muted-foreground" /> Editar Perfil
+                  <Camera className="w-4 h-4 text-white/40" /> Editar Perfil
                 </button>
-                <div className="border-t border-border">
+                <div className="border-t border-white/10">
                   <button
                     onClick={() => { setMenuOpen(false); signOut(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-secondary transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/10 transition-colors"
                   >
                     <LogOut className="w-4 h-4" /> Sair
                   </button>
@@ -411,8 +412,8 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
   function renderNotificationContent() {
     return (
       <>
-        <div className="p-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-display font-bold text-foreground">Notificações</h3>
+        <div className="p-3 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-sm font-display font-bold text-white">Notificações</h3>
           <div className="flex items-center gap-1">
             {unreadCount > 0 && (
               <button onClick={markAllAsRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
@@ -420,7 +421,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
               </button>
             )}
             {notifications.length > 0 && (
-              <button onClick={deleteAllNotifications} className="text-[10px] text-destructive hover:underline flex items-center gap-1 ml-2">
+              <button onClick={deleteAllNotifications} className="text-[10px] text-red-400 hover:underline flex items-center gap-1 ml-2">
                 <Trash2 className="w-3 h-3" /> Limpar
               </button>
             )}
@@ -428,7 +429,7 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
         </div>
         <div className="max-h-[350px] overflow-y-auto">
           {recentNotifications.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6">Nenhuma notificação</p>
+            <p className="text-xs text-white/40 text-center py-6">Nenhuma notificação</p>
           ) : (
             recentNotifications.map(n => {
               const fromProfile = profiles.find(p => p.user_id === n.from_user_id);
@@ -436,14 +437,14 @@ export default function AppSidebar({ mobileOpen, onClose, hideHeader }: AppSideb
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
-                  className={`w-full text-left px-3 py-2.5 transition-colors border-b border-border/50 last:border-0 ${n.read ? 'hover:bg-secondary' : 'bg-primary/5 hover:bg-primary/10'
+                  className={`w-full text-left px-3 py-2.5 transition-colors border-b border-white/5 last:border-0 ${n.read ? 'hover:bg-white/5' : 'bg-primary/10 hover:bg-primary/20'
                     }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-foreground leading-relaxed">{n.message}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="text-xs text-white leading-relaxed">{n.message}</p>
+                      <p className="text-[10px] text-white/40 mt-0.5">
                         {new Date(n.created_at).toLocaleDateString('pt-BR')}
                         {fromProfile && ` · ${fromProfile.full_name}`}
                       </p>

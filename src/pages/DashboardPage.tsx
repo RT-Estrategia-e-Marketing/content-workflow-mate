@@ -30,9 +30,13 @@ export default function DashboardPage() {
   const donePosts = myPosts.filter(p => ['approved', 'scheduled', 'published'].includes(p.stage));
   const overduePosts = pendingPosts.filter(p => new Date(p.scheduledDate) < new Date());
 
-  // Recent posts (last 5 updated) for the workspace
+  // Recent posts: sort by updatedAt (most recently modified) > scheduledDate > createdAt
   const recentPosts = [...workspacePosts]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => {
+      const aTime = a.updatedAt || a.scheduledDate || a.createdAt;
+      const bTime = b.updatedAt || b.scheduledDate || b.createdAt;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    })
     .slice(0, 5);
 
   const stats = [
@@ -106,8 +110,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-
-
 
       {/* Bottom Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -196,7 +198,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-card-foreground truncate">{p.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatDateBR(p.createdAt)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDateBR(p.scheduledDate || p.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className={`w-2 h-2 rounded-full ${STAGE_COLORS[p.stage] || 'bg-muted-foreground'}`} />

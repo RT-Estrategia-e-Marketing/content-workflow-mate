@@ -82,6 +82,7 @@ export function dbPostToPost(id: string, p: DbPost): Post {
     publishedAt: p.published_at || undefined,
     comments: (p.comments || []) as PostComment[],
     createdAt: p.created_at ? p.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    updatedAt: p.updated_at || undefined,
   };
 }
 
@@ -239,6 +240,8 @@ export function useAppData() {
     if (data.publishingError !== undefined) update.publishing_error = data.publishingError ?? null;
     if (data.publishedAt !== undefined) update.published_at = data.publishedAt ?? null;
     if (data.comments !== undefined) update.comments = data.comments;
+
+    update.updated_at = new Date().toISOString();
 
     await updateDoc(doc(db, 'posts', postId), update);
   }, []);
