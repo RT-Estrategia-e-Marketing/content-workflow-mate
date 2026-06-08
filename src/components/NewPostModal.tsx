@@ -45,7 +45,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
     const [carouselImages, setCarouselImages] = useState<string[]>([]);
     const [reelsCover, setReelsCover] = useState('');
     const [reelsVideo, setReelsVideo] = useState('');
-    const [scheduledTime, setScheduledTime] = useState('12:00');
+    const [scheduledTime, setScheduledTime] = useState('');
     const [assignedTo, setAssignedTo] = useState<string[]>([]);
     const [dragIdx, setDragIdx] = useState<number | null>(null);
     const multiFileRef = useRef<HTMLInputElement>(null);
@@ -119,7 +119,7 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
             platform,
             stage: 'content',
             scheduledDate: date || undefined,
-            scheduledTime,
+            scheduledTime: scheduledTime || undefined,
             scheduledUnix: (date && scheduledTime) ? Math.floor(new Date(`${date}T${scheduledTime}:00`).getTime() / 1000) : undefined,
             videoThumbnailUrl: type === 'reels' ? reelsCover : undefined,
             assignedTo: assignedTo.length > 0 ? assignedTo : undefined
@@ -235,10 +235,11 @@ export default function NewPostModal({ clientId: initialClientId, initialDate, o
                             <DatePicker value={date} onChange={setDate} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Horário</p>
+                            <p className="text-[10px] text-muted-foreground font-medium mb-1 ml-1">Horário <span className="text-muted-foreground/50">(opcional)</span></p>
                             <TimePicker 
                                 value={scheduledTime} 
                                 onChange={setScheduledTime}
+                                optional
                             />
                         </div>
                     </div>

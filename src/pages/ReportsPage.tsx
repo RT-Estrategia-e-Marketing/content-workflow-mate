@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import ReportsTab from '@/components/ReportsTab';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarDays, BarChart3, Building2 } from 'lucide-react';
+import { CalendarDays, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   format, subDays, startOfMonth, endOfMonth, 
@@ -92,24 +92,20 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-primary" />
-            Relatórios
-          </h1>
-          <div className="flex items-center gap-2 mt-1.5">
-            <div className="w-5 h-5 rounded flex-shrink-0 overflow-hidden flex items-center justify-center bg-primary/10">
-              {activeIsUrl ? (
-                <img src={activeClient.logo} alt={activeClient.name} className="w-full h-full object-contain" />
-              ) : (
-                <span className="text-[10px] font-bold text-primary">{activeClient.name.charAt(0)}</span>
-              )}
-            </div>
-            <p className="text-muted-foreground text-sm">
-              <span className="font-medium text-foreground">{activeClient.name}</span>
-              {' '}· Facebook, Instagram e ADS
-            </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+            {activeIsUrl ? (
+              <img src={activeClient.logo} alt={activeClient.name} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-lg font-bold text-primary">{activeClient.name.charAt(0)}</span>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground leading-tight">
+              {activeClient.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">Relatórios · Facebook, Instagram e ADS</p>
           </div>
         </div>
 

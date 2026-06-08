@@ -20,7 +20,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
   getPageInsights,
@@ -282,44 +281,255 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
 
   const handleExportPDF = async () => {
     setIsExporting(true);
-    // Aguarda o React atualizar a interface do DOM para mostrar cabecalho e esconder tabs
-    await new Promise(r => setTimeout(r, 100));
-
-    const element = document.getElementById('report-pdf-content');
-    if (!element) {
-      setIsExporting(false);
-      return;
-    }
-    
     try {
       toast.info('Gerando PDF do Relatório, aguarde...', { duration: 3000 });
-      
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      
-      const monthStr = dateFilter === 'this_month' ? 'Este_Mes' : dateFilter === 'last_month' ? 'Mes_Passado' : 'Ultimos_30d';
-      pdf.save(`Relatorio_${client.name.replace(/\s+/g, '_')}_${monthStr}.pdf`);
-      
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const W = pdf.internal.pageSize.getWidth();
+      const H = pdf.internal.pageSize.getHeight();
+      const margin = 16;
+      const col = W - margin * 2;
+      let y = 0;
+
+      // ── Cover page ────────────────────────────────────────────────────────
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, W, H, 'F');
+
+      // Accent bar
+      pdf.setFillColor(234, 88, 12); // primary orange
+      pdf.rect(0, 0, 6, H, 'F');
+
+      // Title
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(28);
+      pdf.text('Relatório de', margin + 8, 60);
+      pdf.text('Desempenho', margin + 8, 74);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(14);
+      pdf.setTextColor(203, 213, 225);
+      pdf.text(client.name, margin + 8, 92);
+
+      pdf.setFontSize(11);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text(`Período: ${dateLabel || 'Personalizado'}`, margin + 8, 103);
+      pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, margin + 8, 112);
+
+      // PostFlow watermark
+      pdf.setFontSize(9);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text('Gerado por PostFlow', margin + 8, H - 16);
+
+      // ── Page 2: Data Overview ─────────────────────────────────────────────
+      pdf.addPage();
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(0, 0, W, H, 'F');
+      pdf.setFillColor(234, 88, 12);
+      pdf.rect(0, 0, W, 1.5, 'F');
+
+      y = 24;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text('Visão Geral', margin, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 116, 139);
+      pdf.text(client.name + ' · ' + (dateLabel || ''), margin, y + 7);
+      y += 18;
+
+      // ── Metrics grid ──────────────────────────────────────────────────────
+      const drawMetricBox = (label: string, value: string, desc: string, x: number, yy: number, w: number) => {
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(x, yy, w, 28, 3, 3, 'F');
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(x, yy, w, 28, 3, 3, 'S');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(15);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(value, x + 5, yy + 12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(label.toUpperCase(), x + 5, yy + 20);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text(desc, x + 5, yy + 25.5);
+      };
+
+      const bw = (col - 6) / 4;
+      if (hasFB || hasIG || hasAds) {
+        drawMetricBox('Alcance Total', fmt(fbTotalReach + igReach + adsReach), 'FB + IG + ADS', margin, y, bw);
+        drawMetricBox('Impressões', fmt(fbImpressions + igImpressions + adsImpressions), 'Todos os canais', margin + bw + 2, y, bw);
+        drawMetricBox('Engajamentos', fmt(fbEngagements + igInteractions), 'Orgânico combinado', margin + (bw + 2) * 2, y, bw);
+        drawMetricBox('Investimento Ads', hasAds ? fmtCurrency(adsSpend) : '—', hasAds ? `CTR: ${fmtPercent(adsCTR)}` : 'Sem ADS', margin + (bw + 2) * 3, y, bw);
+        y += 34;
+      }
+
+      // ── Section separator helper ───────────────────────────────────────────
+      const sectionHeader = (title: string, subtitle: string) => {
+        pdf.setFillColor(234, 88, 12);
+        pdf.rect(margin, y, 3, 10, 'F');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(title, margin + 6, y + 7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(subtitle, margin + 6, y + 13);
+        y += 18;
+      };
+
+      // ── Facebook ─────────────────────────────────────────────────────────
+      if (hasFB) {
+        sectionHeader('Facebook Orgânico', `${fmt(fbFans)} seguidores · ${fbSummary?.name || client.name}`);
+        const fbItems = [
+          ['Alcance', fmt(fbTotalReach)],
+          ['Impressões', fmt(fbImpressions)],
+          ['Engajamentos', fmt(fbEngagements)],
+          ['Reações', fmt(fbReactions)],
+          ['Novos Seguidores', `+${fmt(fbFanAdds)}`],
+          ['Views de Página', fmt(fbPageViews)],
+        ];
+        const fbBw = (col - 4) / 3;
+        fbItems.forEach(([label, val], idx) => {
+          const col3 = idx % 3;
+          const row3 = Math.floor(idx / 3);
+          if (idx > 0 && col3 === 0) y += 22;
+          drawMetricBox(label, val, '', margin + col3 * (fbBw + 2), row3 === 0 ? y : y, fbBw);
+        });
+        y += 22;
+        // Page check
+        if (y > H - 60) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+      }
+
+      // ── Instagram ─────────────────────────────────────────────────────────
+      if (hasIG) {
+        if (y > H - 80) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+        sectionHeader('Instagram Orgânico', `${fmt(igFollowers)} seguidores · @${igDetails?.username || client.name}`);
+        const igItems = [
+          ['Alcance', fmt(igReach)],
+          ['Interações', fmt(igInteractions)],
+          ['Visitas ao Perfil', fmt(igProfileViews)],
+          ['Seguidores', fmt(igFollowers)],
+          ['Curtidas', fmt(igLikes)],
+          ['Comentários', fmt(igComments)],
+          ['Compartilhamentos', fmt(igShares)],
+          ['Saves', fmt(igSaves)],
+          ['Contas Engajadas', fmt(igAccountsEngaged)],
+        ];
+        const igBw = (col - 4) / 3;
+        igItems.forEach(([label, val], idx) => {
+          const c3 = idx % 3;
+          if (idx > 0 && c3 === 0) y += 22;
+          drawMetricBox(label, val, '', margin + c3 * (igBw + 2), y, igBw);
+        });
+        y += 22;
+        if (y > H - 60) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+      }
+
+      // ── ADS ───────────────────────────────────────────────────────────────
+      if (hasAds && adsInsights.length > 0) {
+        if (y > H - 80) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+        sectionHeader('Anúncios (ADS)', `${adsCampaigns.length} campanhas no período`);
+        const adsBw = (col - 6) / 4;
+        drawMetricBox('Investimento', fmtCurrency(adsSpend), 'Total no período', margin, y, adsBw);
+        drawMetricBox('Alcance', fmt(adsReach), 'Pessoas únicas', margin + adsBw + 2, y, adsBw);
+        drawMetricBox('Cliques', fmt(adsClicks), 'Total de cliques', margin + (adsBw + 2) * 2, y, adsBw);
+        drawMetricBox('CTR', fmtPercent(adsCTR), `CPC: ${fmtCurrency(adsCPC)}`, margin + (adsBw + 2) * 3, y, adsBw);
+        y += 34;
+
+        // Campaigns table
+        if (adsCampaigns.length > 0 && y < H - 60) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          pdf.setTextColor(100, 116, 139);
+          const headers = ['Campanha', 'Status', 'Gasto', 'Cliques', 'Performance'];
+          const colWidths = [col * 0.35, col * 0.15, col * 0.17, col * 0.13, col * 0.2];
+          let cx = margin;
+          pdf.setFillColor(241, 245, 249);
+          pdf.rect(margin, y, col, 8, 'F');
+          headers.forEach((h, i) => {
+            pdf.text(h, cx + 2, y + 5.5);
+            cx += colWidths[i];
+          });
+          y += 8;
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7.5);
+          adsCampaigns.slice(0, 8).forEach((c: any, rowIdx: number) => {
+            const ins = c.insights?.data?.[0];
+            const spent = parseFloat(ins?.spend || '0');
+            const clicks = parseInt(ins?.clicks || '0', 10);
+            const cpc = parseFloat(ins?.cpc || '0');
+            const isActive = c.effective_status === 'ACTIVE';
+            const perf = spent > 0 && clicks === 0 ? 'Sem Cliques' : cpc > 5 ? 'Alto CPC' : isActive ? 'Ativo' : 'Concluído';
+            if (rowIdx % 2 === 0) { pdf.setFillColor(248, 250, 252); pdf.rect(margin, y, col, 7, 'F'); }
+            pdf.setTextColor(15, 23, 42);
+            cx = margin;
+            const row = [
+              c.name.slice(0, 32),
+              isActive ? 'Ativa' : 'Pausada',
+              spent > 0 ? fmtCurrency(spent) : '—',
+              clicks > 0 ? fmt(clicks) : '—',
+              perf,
+            ];
+            row.forEach((cell, i) => {
+              pdf.text(String(cell), cx + 2, y + 5);
+              cx += colWidths[i];
+            });
+            y += 7;
+            if (y > H - 20) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+          });
+        }
+      }
+
+      // ── Best Posts (IG) ───────────────────────────────────────────────────
+      if (igMedia.length > 0) {
+        if (y > H - 80) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+        sectionHeader('Melhores Posts Instagram', 'Ranking por curtidas + comentários');
+        const sorted = [...igMedia].sort((a: any, b: any) =>
+          ((b.like_count || 0) + (b.comments_count || 0)) - ((a.like_count || 0) + (a.comments_count || 0))
+        ).slice(0, 5);
+        sorted.forEach((p: any, i: number) => {
+          const eng = (p.like_count || 0) + (p.comments_count || 0);
+          const caption = (p.caption || 'Sem legenda').slice(0, 70) + ((p.caption?.length || 0) > 70 ? '…' : '');
+          pdf.setFillColor(255, 255, 255);
+          pdf.roundedRect(margin, y, col, 14, 2, 2, 'F');
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          pdf.setTextColor(234, 88, 12);
+          pdf.text(`#${i + 1}`, margin + 3, y + 6);
+          pdf.setTextColor(15, 23, 42);
+          pdf.text(caption, margin + 12, y + 6);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7);
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(`❤ ${p.like_count || 0}   💬 ${p.comments_count || 0}   Total Engaj: ${eng}`, margin + 12, y + 11);
+          y += 16;
+          if (y > H - 20) { pdf.addPage(); pdf.setFillColor(248, 250, 252); pdf.rect(0, 0, W, H, 'F'); y = 20; }
+        });
+      }
+
+      // ── Footer on last page ───────────────────────────────────────────────
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, H - 14, W - margin, H - 14);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text('PostFlow · Relatório de Desempenho', margin, H - 9);
+      pdf.text(`${client.name} · ${dateLabel || ''}`, W - margin, H - 9, { align: 'right' });
+
+      const filename = `Relatorio_${client.name.replace(/\s+/g, '_')}_${(dateLabel || 'periodo').replace(/\s|\//g, '_')}.pdf`;
+      pdf.save(filename);
       toast.success('Relatório exportado em PDF com sucesso!');
     } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
-      toast.error(`Erro ao gerar PDF: ${error.message || 'Falha na renderização visual'}`);
+      toast.error(`Erro ao gerar PDF: ${error.message || 'Falha na geração'}`);
     } finally {
       setIsExporting(false);
     }
@@ -684,9 +894,176 @@ export default function ReportsTab({ client, dateFilter = { preset: 'last_30d' }
                   </CardContent>
                 </Card>
               </div>
+
+              {/* ── Melhores Posts ── */}
+              {(igMedia.length > 0 || fbPosts.length > 0) && (
+                <Card className="border-none shadow-sm bg-card/50 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                      Melhores Posts — Ranking de Engajamento
+                    </CardTitle>
+                    <CardDescription>Posts com maior alcance e interação no período</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* IG top posts */}
+                    {igMedia.length > 0 && (
+                      <>
+                        <p className="text-xs font-semibold text-[#E1306C] uppercase tracking-wider flex items-center gap-1 mb-2">
+                          <Instagram className="w-3 h-3" /> Instagram
+                        </p>
+                        <div className="space-y-2">
+                          {[...igMedia]
+                            .sort((a: any, b: any) =>
+                              ((b.like_count || 0) + (b.comments_count || 0)) -
+                              ((a.like_count || 0) + (a.comments_count || 0))
+                            )
+                            .slice(0, 3)
+                            .map((post: any, idx: number) => {
+                              const eng = (post.like_count || 0) + (post.comments_count || 0);
+                              const maxEng = (igMedia[0]?.like_count || 0) + (igMedia[0]?.comments_count || 0);
+                              const pct = maxEng > 0 ? Math.round((eng / maxEng) * 100) : 0;
+                              return (
+                                <div key={post.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 group hover:bg-muted/50 transition-colors">
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${idx === 0 ? 'bg-amber-400/20 text-amber-600' : idx === 1 ? 'bg-slate-300/30 text-slate-600' : 'bg-orange-300/20 text-orange-700'}`}>
+                                    {idx + 1}
+                                  </div>
+                                  <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0">
+                                    {post.media_url && <img src={post.thumbnail_url || post.media_url} alt="" className="w-full h-full object-cover" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-foreground line-clamp-1">{post.caption?.slice(0, 80) || 'Sem legenda'}</p>
+                                    <div className="flex items-center gap-3 mt-1.5">
+                                      <span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><Heart className="w-3 h-3 text-rose-400" />{post.like_count ?? 0}</span>
+                                      <span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><MessageCircle className="w-3 h-3 text-blue-400" />{post.comments_count ?? 0}</span>
+                                      <span className="text-[11px] font-semibold text-primary">Engaj: {eng}</span>
+                                    </div>
+                                    <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-gradient-to-r from-[#E1306C] to-[#f09433] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                  {post.permalink && (
+                                    <a href={post.permalink} target="_blank" rel="noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </>
+                    )}
+                    {/* FB top posts */}
+                    {fbPosts.length > 0 && (
+                      <>
+                        <p className="text-xs font-semibold text-[#1877F2] uppercase tracking-wider flex items-center gap-1 mt-4 mb-2">
+                          <Facebook className="w-3 h-3" /> Facebook
+                        </p>
+                        <div className="space-y-2">
+                          {[...fbPosts]
+                            .sort((a: any, b: any) =>
+                              ((b.reactions?.summary?.total_count || 0) + (b.comments?.summary?.total_count || 0)) -
+                              ((a.reactions?.summary?.total_count || 0) + (a.comments?.summary?.total_count || 0))
+                            )
+                            .slice(0, 3)
+                            .map((post: any, idx: number) => {
+                              const eng = (post.reactions?.summary?.total_count || 0) + (post.comments?.summary?.total_count || 0);
+                              return (
+                                <div key={post.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 group hover:bg-muted/50 transition-colors">
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${idx === 0 ? 'bg-amber-400/20 text-amber-600' : idx === 1 ? 'bg-slate-300/30 text-slate-600' : 'bg-orange-300/20 text-orange-700'}`}>
+                                    {idx + 1}
+                                  </div>
+                                  {post.full_picture && <img src={post.full_picture} alt="" className="w-10 h-10 object-cover rounded-lg shrink-0" />}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-foreground line-clamp-1">{post.message?.slice(0, 80) || 'Sem texto'}</p>
+                                    <div className="flex items-center gap-3 mt-1.5">
+                                      <span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><Heart className="w-3 h-3 text-rose-400" />{post.reactions?.summary?.total_count ?? 0}</span>
+                                      <span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><MessageCircle className="w-3 h-3 text-blue-400" />{post.comments?.summary?.total_count ?? 0}</span>
+                                      <span className="text-[11px] font-semibold text-primary">Engaj: {eng}</span>
+                                    </div>
+                                  </div>
+                                  {post.permalink_url && (
+                                    <a href={post.permalink_url} target="_blank" rel="noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── Análise / Insights card ── */}
+              {(hasFB || hasIG) && !loading && (
+                <Card className="border-none shadow-sm bg-gradient-to-br from-primary/5 to-accent/5 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-primary" />
+                      Análise do Período
+                    </CardTitle>
+                    <CardDescription>Insights automáticos com base nos dados coletados</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        hasFB && fbTotalReach > 0 && {
+                          label: 'Alcance Facebook',
+                          insight: fbTotalReach > 10000
+                            ? `Excelente! Seu alcance orgânico de ${fmt(fbTotalReach)} é alto.`
+                            : `Alcance de ${fmt(fbTotalReach)}. Experimente posts com maior frequência.`,
+                          icon: Facebook,
+                          color: 'text-[#1877F2]',
+                        },
+                        hasIG && igReach > 0 && {
+                          label: 'Alcance Instagram',
+                          insight: igReach > 5000
+                            ? `Ótimo alcance de ${fmt(igReach)} contas únicas no Instagram.`
+                            : `Alcance de ${fmt(igReach)}. Reels e Stories tendem a aumentar o alcance.`,
+                          icon: Instagram,
+                          color: 'text-[#E1306C]',
+                        },
+                        hasIG && igInteractions > 0 && igReach > 0 && {
+                          label: 'Taxa de Engajamento IG',
+                          insight: (() => {
+                            const rate = (igInteractions / igReach) * 100;
+                            return rate > 3
+                              ? `Taxa de ${rate.toFixed(1)}% — acima da média do setor (>3%). 🎉`
+                              : `Taxa de ${rate.toFixed(1)}%. Incentive comentários com perguntas.`;
+                          })(),
+                          icon: Heart,
+                          color: 'text-rose-500',
+                        },
+                        hasAds && adsSpend > 0 && adsClicks > 0 && {
+                          label: 'Eficiência dos Anúncios',
+                          insight: adsCPC < 2
+                            ? `CPC de ${fmtCurrency(adsCPC)} está ótimo! Abaixo de R$2,00.`
+                            : `CPC de ${fmtCurrency(adsCPC)}. Revise os criativos ou a segmentação.`,
+                          icon: Target,
+                          color: 'text-[#FF6B35]',
+                        },
+                      ].filter(Boolean).map((item: any, i: number) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-background/60 border border-border/40">
+                          <div className={`w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 ${item.color}`}>
+                            <item.icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.insight}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </TabsContent>
+
 
         {/* ══════════════════ FACEBOOK ORGÂNICO ══════════════════ */}
         {hasFB && (

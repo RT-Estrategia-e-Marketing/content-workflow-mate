@@ -87,12 +87,26 @@ export default function CalendarPage() {
     );
   }
 
+  const activeIsUrl = activeClient.logo && activeClient.logo.startsWith('http');
+
   return (
     <div className="animate-slide-in">
-      <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">Calendário</h1>
-      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">
-        Publicações agendadas · <span className="text-foreground font-medium">{activeClient.name}</span>
-      </p>
+      {/* Workspace header — matches KanbanPage style */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+          {activeIsUrl ? (
+            <img src={activeClient.logo} alt={activeClient.name} className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-lg font-bold text-primary">{activeClient.name.charAt(0)}</span>
+          )}
+        </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground leading-tight">
+            {activeClient.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">Calendário de publicações</p>
+        </div>
+      </div>
 
       {/* Controls row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -168,16 +182,26 @@ export default function CalendarPage() {
                     setNewPostOpen(true);
                   }
                 }}
-                className={`min-h-[48px] md:min-h-[110px] border-b border-r border-border p-1 md:p-2 text-left transition-colors ${isToday ? 'bg-primary/5' : ''
+                className={`min-h-[48px] md:min-h-[110px] border-b border-r border-border p-1 md:p-2 text-left transition-colors flex flex-col ${isToday ? 'bg-primary/5' : ''
                   } ${isSelected ? 'ring-2 ring-inset ring-primary' : ''} ${dayPosts.length > 0 ? 'md:cursor-default cursor-pointer active:bg-secondary/50' : ''
                   }`}
               >
-                <span className={`text-[10px] md:text-xs font-medium inline-flex items-center justify-center ${isToday ? 'bg-primary text-primary-foreground w-5 h-5 md:w-6 md:h-6 rounded-full' : 'text-muted-foreground'
+                {/* Day number — always pinned to top */}
+                <div className="flex items-start justify-between mb-1">
+                  <span className={`text-[10px] md:text-xs font-semibold inline-flex items-center justify-center leading-none ${
+                    isToday
+                      ? 'bg-primary text-primary-foreground w-5 h-5 md:w-6 md:h-6 rounded-full'
+                      : 'text-foreground/70 w-5 h-5 md:w-6 md:h-6'
                   }`}>
-                  {format(day, 'd')}
-                </span>
+                    {format(day, 'd')}
+                  </span>
+                  {/* Mobile: dot count */}
+                  {dayPosts.length > 0 && (
+                    <span className="text-[8px] text-muted-foreground md:hidden">{dayPosts.length}</span>
+                  )}
+                </div>
                 {/* Mobile: dots */}
-                <div className="flex flex-wrap gap-0.5 mt-1 md:hidden">
+                <div className="flex flex-wrap gap-0.5 md:hidden">
                   {dayPosts.slice(0, 4).map(p => (
                     <span
                       key={p.id}
@@ -189,7 +213,7 @@ export default function CalendarPage() {
                   )}
                 </div>
                 {/* Desktop: full labels */}
-                <div className="mt-1 space-y-1 hidden md:block">
+                <div className="space-y-1 hidden md:flex md:flex-col md:flex-1">
                   {dayPosts.slice(0, 3).map(p => (
                     <button
                       key={p.id}
