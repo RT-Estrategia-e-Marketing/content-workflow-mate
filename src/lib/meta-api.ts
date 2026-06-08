@@ -401,13 +401,23 @@ export async function getIGAccountDetails(igAccountId: string, accessToken: stri
  */
 export async function getIGRecentMedia(igAccountId: string, accessToken: string, limit = 10) {
     try {
-        // Métricas válidas para media insights: reach, impressions, saved, video_views,
-        // total_interactions, plays. 'engagement' e 'engagement_rate' foram deprecados.
-        const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,total_interactions,plays)';
+        // Only use metrics valid for ALL media types (image, video, reel, story).
+        // 'plays' is video/reel-only and causes #100 on image posts.
+        // 'video_views' is also video-only — excluded for the same reason.
+        const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,total_interactions)';
         const url = `https://graph.facebook.com/v19.0/${igAccountId}/media?fields=${fields}&limit=${limit}&access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
+        // If the whole request fails, fall back to basic fields without insights
+        if (data.error) {
+            console.warn('IG media with insights failed, retrying without insights:', data.error.message);
+            const basicFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count';
+            const fallbackUrl = `https://graph.facebook.com/v19.0/${igAccountId}/media?fields=${basicFields}&limit=${limit}&access_token=${accessToken}`;
+            const fallbackRes = await fetch(fallbackUrl);
+            const fallbackData = await fallbackRes.json();
+            if (fallbackData.error) throw new Error(fallbackData.error.message);
+            return fallbackData.data || [];
+        }
         return data.data || [];
     } catch (err: any) {
         console.error('Erro ao buscar mídia do Instagram:', err);

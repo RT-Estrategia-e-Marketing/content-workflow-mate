@@ -16,8 +16,11 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function TrashPage() {
-  const { trashedPosts, clients, restorePost, hardDeletePost, emptyTrash } = useApp();
+  const { trashedPosts, clients, activeWorkspaceId, restorePost, hardDeletePost, emptyTrash } = useApp();
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
+
+  const activeClient = clients.find(c => c.id === activeWorkspaceId);
+  const activeIsUrl = activeClient?.logo && activeClient.logo.startsWith('http');
 
   const filteredPosts = selectedClient 
     ? trashedPosts.filter(p => p.clientId === selectedClient) 
@@ -26,13 +29,22 @@ export default function TrashPage() {
   return (
     <div className="animate-slide-in">
       <div className="flex items-center justify-between mb-6 md:mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1 flex items-center gap-2">
-            Lixeira
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Os itens recém-excluídos aparecerão aqui. Eles podem ser apagados permanentemente através desta tela.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center bg-primary/10">
+            {activeIsUrl ? (
+              <img src={activeClient!.logo} alt={activeClient!.name} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-lg font-bold text-primary">
+                {activeClient ? activeClient.name.charAt(0) : <Trash2 className="w-5 h-5" />}
+              </span>
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground leading-tight">
+              {activeClient ? activeClient.name : 'Lixeira'}
+            </h1>
+            <p className="text-sm text-muted-foreground">Lixeira de posts excluídos</p>
+          </div>
         </div>
         
         {trashedPosts.length > 0 && (
