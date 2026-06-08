@@ -11,7 +11,7 @@ interface TimePickerProps {
   optional?: boolean;
 }
 
-const ITEM_H = 40;
+const ITEM_H = 32;
 
 export default function TimePicker({ value, onChange, className, optional }: TimePickerProps) {
   const [open, setOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
       center(hourColRef, selH ? parseInt(selH) : 0);
       center(minColRef,  selM ? parseInt(selM) : 0);
     }, 60);
-  }, [open]);
+  }, [open, selH, selM]);
 
   // Forward wheel events from child buttons to the scroll container
   const handleWheel = (ref: React.RefObject<HTMLDivElement>) => (e: React.WheelEvent) => {
@@ -103,38 +103,38 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-auto p-0 shadow-xl" align="start">
+      <PopoverContent className="w-[140px] p-0 shadow-xl" align="start">
 
-        {/* Text input */}
-        <div className="px-3 py-2.5 border-b border-border flex items-center gap-2">
+        {/* Text input (No orange time badge) */}
+        <div className="px-3 py-2 border-b border-border flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
           <input
             type="text"
             inputMode="numeric"
-            placeholder="ex: 14:30"
+            placeholder="14:30"
             defaultValue={value}
             onChange={e => handleInputChange(e.target.value)}
             onBlur={handleInputBlur}
-            className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
+            className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50 w-full"
           />
         </div>
 
         {/* Columns */}
-        <div className="flex divide-x divide-border" style={{ height: 240 }}>
+        <div className="flex divide-x divide-border" style={{ height: 200 }}>
 
           {/* ── Hours ── */}
-          <div className="flex flex-col" style={{ width: 120 }}>
-            <p className="text-[11px] font-bold text-muted-foreground text-center py-1.5 border-b border-border bg-muted/40 uppercase tracking-widest shrink-0">
-              Hora
+          <div className="flex flex-col flex-1">
+            <p className="text-[10px] font-bold text-muted-foreground text-center py-1 border-b border-border bg-muted/40 uppercase tracking-widest shrink-0">
+              H
             </p>
             {/* Scroll container: onWheel on this div + all children forward to it */}
             <div
               ref={hourColRef}
               className="flex-1 overflow-y-auto overscroll-contain"
-              style={{ scrollbarWidth: 'thin' }}
+              style={{ scrollbarWidth: 'none' }}
             >
               <div
-                className="flex flex-col py-1 px-2"
+                className="flex flex-col p-1 gap-0.5"
                 onWheel={handleWheel(hourColRef)}
               >
                 {hours.map(h => (
@@ -144,10 +144,10 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
                     onClick={() => selectHour(h)}
                     style={{ height: ITEM_H, minHeight: ITEM_H }}
                     className={cn(
-                      'w-full rounded-lg text-base font-mono font-medium transition-colors flex items-center justify-center shrink-0',
+                      'w-full rounded text-sm font-mono transition-colors flex items-center justify-center shrink-0',
                       selH === h
                         ? 'bg-primary text-primary-foreground font-bold shadow-sm'
-                        : 'text-foreground/70 hover:bg-muted'
+                        : 'text-foreground/80 hover:bg-muted'
                     )}
                   >
                     {h}
@@ -158,17 +158,17 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
           </div>
 
           {/* ── Minutes ── */}
-          <div className="flex flex-col" style={{ width: 120 }}>
-            <p className="text-[11px] font-bold text-muted-foreground text-center py-1.5 border-b border-border bg-muted/40 uppercase tracking-widest shrink-0">
+          <div className="flex flex-col flex-1">
+            <p className="text-[10px] font-bold text-muted-foreground text-center py-1 border-b border-border bg-muted/40 uppercase tracking-widest shrink-0">
               Min
             </p>
             <div
               ref={minColRef}
               className="flex-1 overflow-y-auto overscroll-contain"
-              style={{ scrollbarWidth: 'thin' }}
+              style={{ scrollbarWidth: 'none' }}
             >
               <div
-                className="flex flex-col py-1 px-2"
+                className="flex flex-col p-1 gap-0.5"
                 onWheel={handleWheel(minColRef)}
               >
                 {minutes.map(m => (
@@ -178,10 +178,10 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
                     onClick={() => selectMinute(m)}
                     style={{ height: ITEM_H, minHeight: ITEM_H }}
                     className={cn(
-                      'w-full rounded-lg text-base font-mono font-medium transition-colors flex items-center justify-center shrink-0',
+                      'w-full rounded text-sm font-mono transition-colors flex items-center justify-center shrink-0',
                       selM === m
                         ? 'bg-primary text-primary-foreground font-bold shadow-sm'
-                        : 'text-foreground/70 hover:bg-muted'
+                        : 'text-foreground/80 hover:bg-muted'
                     )}
                   >
                     {m}
@@ -191,19 +191,6 @@ export default function TimePicker({ value, onChange, className, optional }: Tim
             </div>
           </div>
         </div>
-
-        {/* Footer — only shown when optional */}
-        {optional && (
-          <div className="flex items-center justify-end px-3 py-2 border-t border-border bg-muted/20">
-            <button
-              type="button"
-              onClick={() => { onChange(''); setOpen(false); }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Limpar horário
-            </button>
-          </div>
-        )}
 
       </PopoverContent>
     </Popover>
